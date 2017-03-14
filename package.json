@@ -1,0 +1,22 @@
+{
+  "name": "zco",
+  "version": "1.0.0",
+  "description": "co_routine code style in js ,with no promise",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yyrdl/co.git"
+  },
+  "keywords": [
+    "co"
+  ],
+  "author": "yyrdl",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yyrdl/co/issues"
+  },
+  "homepage": "https://github.com/yyrdl/co#readme"
+}

@@ -1,4 +1,4 @@
-# zco
+# co
 
 inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only callback.
 
@@ -8,14 +8,14 @@ inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only
 ```javascript
 const co=require("zco");
 
-var func=function(a,b,c,cb){
+var func=function(a,b,c,cb){//the last arg must be callback
    setTimeout(function () {
        cb(a+b+c);
    },10);
 
 }
 
-function A(cb){
+function test_f(cb){//the last arg must be callback
    return co(function*(run){
 
         var s=yield run(func,1,2,3);
@@ -33,9 +33,13 @@ function A(cb){
 
 co(function*(run){
 
-    var [err,s]=yield run(A);
-
-    console.log(s);
+    var [err,s]=yield run(test_f);
+    if(err){
+	  //do something
+	}else{
+	 console.log(s);
+	}
+   
     return "done";
 
 })(function(err,res){
