@@ -1,4 +1,4 @@
-# co
+# zco
 
 inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only callback.
 
