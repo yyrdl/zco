@@ -5,6 +5,9 @@ inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only
 
 # useage
 
+	npm install zco
+	
+	
 ```javascript
 const co=require("zco");
 
