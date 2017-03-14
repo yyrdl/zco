@@ -2,16 +2,19 @@
  * Created by yyrdl on 2017/3/14.
  */
 
-const TEST_RUN_TIME=1000;
+const TEST_RUN_TIME=10;
 const fs=require("fs");
 
 let report=function(mod,timecost,memeryUse,cb){
-    fs.appendFile("./report.txt",mod+"  "+timecost+"   0"+memeryUse,function(){
+    fs.appendFile("./report.txt",mod+"\t"+timecost+"\t"+memeryUse+"\n",function(){
        cb();
     })
 }
 
 let run=function(cases){//module test case
+    fs.writeFile("./report.txt","module\ttimecost(ms)\tmemery(mb)\n",function(){
+
+    })
     let hasRun=0;
     let index=0;
     let memMax=0,memStart=0;
@@ -33,8 +36,12 @@ let run=function(cases){//module test case
         memStart=0;
 
         if(hasRun==TEST_RUN_TIME){
-            index++
+
+            console.log("Case:"+cases[index]+" Has run: "+hasRun+"times");
+            console.log("total timecost:"+timecost+"  total memery use:"+memUse);
+
             report(cases[index],timecost/hasRun,memUse/hasRun/1024,function(){
+                index++
                 hasRun=0;
                 memUse=0,timecost=0;
                 setTimeout(function(){
@@ -68,3 +75,5 @@ let run=function(cases){//module test case
     }
     runCase();
 }
+
+run(["./cases/callback","./cases/co_yyrdl","./cases/co_tj","./cases/bluebird"]);
