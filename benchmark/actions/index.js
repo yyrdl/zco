@@ -13,25 +13,25 @@ exports.getUserinfo=function (cb) {
     var error=undefined;
     setTimeout(function(){
         cb(error,userinfo);
-    },0);
+    },1);
 }
 
 exports.updateAge=function (new_age,cb) {
     setTimeout(function(){
          userinfo.age=new_age;
          cb();
-    },0)
+    },1)
 }
 exports.articleList=function(username,cb){
     var error=undefined;
     setTimeout(function () {
       cb(error,articelList);
-    },0);
+    },1);
 }
 
 exports.getArticle=function(n,cb){
     var error=undefined;
     setTimeout(function () {
         cb(error,"hello world!");
-    },0);
+    },1);
 }

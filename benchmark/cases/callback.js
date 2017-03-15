@@ -3,15 +3,12 @@
  */
 var actions=require("../actions");
 
-exports.run=function(commitor,done){
+module.exports=function(stream,idOrPath,tag,cb){
     actions.getUserinfo(function(err,userinfo){
-      commitor.commit();
       actions.articleList(userinfo.user,function(err,list){
-        commitor.commit();
           actions.updateAge(23,function () {
-              commitor.commit();
               actions.getArticle(list[0],function () {
-                  done();
+                  cb();
               })
           })
       });

@@ -1,5 +1,12 @@
-module	timecost(ms)	memery(mb)
-./cases/callback	7.5	40.4
-./cases/co_yyrdl	6.5	4
-./cases/co_tj	7	10.8
-./cases/bluebird	6.2	27.2
+name                                      timecost(ms)     memery(mb)       
+callback.js                               266              2.765625         
+promise_bluebird.js                       688              32.640625        
+co_yyrdl.js                               1063             47.14453125      
+async_caolan.js                           1125             122.40625        
+co_when_cujojs.js                         1157             64.25            
+co_tj_with_bluebird_promise.js            1438             85.21875         
+promise_native.js                         1594             54.125           
+co_when_cujojs_with_bluebird.js           1625             96.60546875      
+co_when_cujojs_with_native_promise.js     2094             33.38671875      
+co_tj_with_native_promise.js              2219             -32.43359375     
+co_bluebird.js                            3921             17.73828125      

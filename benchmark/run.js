@@ -1,79 +1,135 @@
-/**
- * Created by yyrdl on 2017/3/14.
- */
 
-const TEST_RUN_TIME=10;
-const fs=require("fs");
 
-let report=function(mod,timecost,memeryUse,cb){
-    fs.appendFile("./report.txt",mod+"\t"+timecost+"\t"+memeryUse+"\n",function(){
-       cb();
-    })
+var util=require("./util");
+var fs=require("fs");
+var path = require('path');
+
+
+function printPlatform() {
+    console.log("\nPlatform info:");
+    var os = require("os");
+    var v8 = process.versions.v8;
+    var node = process.versions.node;
+    var plat = os.type() + " " + os.release() + " " + os.arch() + "\nNode.JS " + node + "\nV8 " + v8;
+    var cpus = os.cpus().map(function(cpu){
+        return cpu.model;
+    }).reduce(function(o, model){
+        if( !o[model] ) o[model] = 0;
+        o[model]++;
+        return o;
+    }, {});
+    cpus = Object.keys(cpus).map(function( key ){
+        return key + " \u00d7 " + cpus[key];
+    }).join("\n");
+    console.log(plat + "\n" + cpus + "\n");
 }
 
-let run=function(cases){//module test case
-    fs.writeFile("./report.txt","module\ttimecost(ms)\tmemery(mb)\n",function(){
+var measure=function(fn,times,callback){
 
-    })
-    let hasRun=0;
-    let index=0;
-    let memMax=0,memStart=0;
-    let startime=0,endTime=0;
-    let memUse=0,timecost=0;
-    let cb=function(){
-        endTime=Date.now();
-        hasRun++;
-        var rss=process.memoryUsage().rss;
-        if(rss>memMax){
-            memMax=rss;
-        }
-        timecost+=endTime-startime;
-        memUse+=Math.abs(memMax-memStart);
+    var start = Date.now();
 
-        endTime=0;
-        startime=0;
-        memMax=0;
-        memStart=0;
+    var warmedUp = 0;
+    var tot =  Math.min( 350, times );
+    for (var k = 0, kn = tot; k < kn; ++k)
+        fn(k,'b','c', warmup);
 
-        if(hasRun==TEST_RUN_TIME){
+    var memMax; var memStart; var start;
 
-            console.log("Case:"+cases[index]+" Has run: "+hasRun+"times");
-            console.log("total timecost:"+timecost+"  total memery use:"+memUse);
+    function cb () {
 
-            report(cases[index],timecost/hasRun,memUse/hasRun/1024,function(){
-                index++
-                hasRun=0;
-                memUse=0,timecost=0;
-                setTimeout(function(){
-                    runCase();
-                },2000)
-            })
-
-        }else{
-            setTimeout(function(){
-                runCase();
-            },2000)
+        memMax = Math.max(memMax, process.memoryUsage().rss);
+        if (!--times) {
+            fn.end && fn.end();
+            callback(null, {
+                time: Date.now() - start,
+                mem: (memMax - memStart)/1024/1024
+            });
         }
     }
-    let commitor={
-        "commit": function(){
-           var rss=process.memoryUsage().rss;
-           if(rss>memMax){
-               memMax=rss;
-           }
+    function warmup() {
+        warmedUp++
+        if( warmedUp === tot ) {
+            start = Date.now();
+
+            memStart = process.memoryUsage().rss;
+            for (var k = 0, kn = times; k < kn; ++k) {
+                fn(k, 'b', 'c', cb);
+            }
+            memMax = process.memoryUsage().rss;
         }
     }
-    let runCase=function(){
-       if(index<cases.length){
-           var mod= require(cases[index]);
-           memStart=process.memoryUsage().rss;
-           startime=Date.now();
-           mod.run(commitor,cb);
-       }else{
-          console.log("All case done");
-       }
+}
+var measureStats=[];
+
+var blank=function(num){
+    var str="";
+    for(var i=0;i<num;i++){
+        str+=" ";
     }
-    runCase();
+    return str;
+}
+var writeReport=function(){
+    var len=[];
+    measureStats=measureStats.sort(function(a,b){
+        return parseInt(a[1])>parseInt(b[1])?1:-1;
+    });
+
+    measureStats.unshift(["name","timecost(ms)","memery(mb)"]);
+    
+    for(var i=0;i<measureStats[0].length;i++){
+        var l=0;
+        for(var j=0;j<measureStats.length;j++){
+            var str=measureStats[j][i]+"";
+            l=str.length>l?str.length:l;
+        }
+        len.push(l);
+    }
+
+    var lines="";
+    for(var i=0;i<measureStats.length;i++){
+        for(var j=0;j<measureStats[i].length;j++){
+            lines+=measureStats[i][j]+blank(len[j]-measureStats[i][j].length+5);
+        }
+        lines+="\n";
+    }
+     console.log("\n"+lines);
+     fs.writeFile("./report.txt",lines,function () {
+         
+     })
+}
+var calmdown=function (func) {
+    setTimeout(function(){
+        func();
+    },10000)
+}
+var  run=function(moduleDirs,times){
+     times=times||50;
+     var __path=path.join(__dirname,moduleDirs);
+     util.fileList(__path,function(err,files){
+         var index=0;
+         var cb=function(er,reportData){
+		    
+             measureStats.push([files[index]+"",reportData.time+"",reportData.mem+""]);
+             index++;
+             if(index==files.length){
+                 writeReport();
+                 console.log("all case done");
+             }else{
+               calmdown(function(){
+                   doMeasure();
+               })
+             }
+         }
+         var doMeasure=function(){
+             console.log("start measure "+files[index]);
+             var fn=require(path.join(__path,files[index]));
+
+             measure(fn,times,cb)
+         }
+         doMeasure();
+     })
 }
 
-run(["./cases/callback","./cases/co_yyrdl","./cases/co_tj","./cases/bluebird"]);
+printPlatform();
+
+run("./cases",20000);

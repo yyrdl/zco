@@ -1,59 +1,49 @@
 /**
  * Created by yyrdl on 2017/3/14.
  */
- 
+var slice = Array.prototype.slice;
+
 var co = function (gen) {
-	var iterator;
-	var callback;
-	var errored = false;
 
-	var future = function (cb) {
-		callback = cb;
-		next();
-	}
-	var error_end = function (e) {
-		callback(e);
-	}
-	var next = function (res) {
-		if (!errored) {
-			try {
-				var v = iterator.next(res);
-				if (v.done) {
-					var r_v = [undefined, v.value];
-					callback.apply(null, r_v);
-				} else {
-					v.value();
-				}
-			} catch (e) {
-				errored = true
-					error_end(e);
-			}
-		}
+	var iterator,
+	callback;
+
+	var _end = function (e, v) {
+		 callback(e, v); //I shoudn't catch the error throwed by user's callback
 	}
 
-	var cb = function () {
-		var args = Array.prototype.slice.call(arguments);
-		next(args);
+	var next = function () {
+		var v = iterator.next(slice.call(arguments));
+		 v.done && _end(undefined, v.value);
 	}
 
 	var run = function () {
-		var args = Array.prototype.slice.call(arguments);
+		var args = slice.call(arguments);
 		var func = args.shift();
-		args.push(cb);
-		return function () {
-			func.apply(null, args);
-		};
+		args.push(next);
+		try {
+			 func.apply(null, args);
+		} catch (e) {
+			 _end(e);
+		}
 	}
-
 	if (typeof gen === 'function') {
 		iterator = gen(run);
 	}
 
-	if (!iterator || typeof iterator.next !== 'function') {
-		return iterator;
+	var future = function (cb) {
+		if ("function" != typeof cb) {
+			throw new TypeError("the first argument must be function");
+			return;
+		}
+		callback = cb;
+		if (!iterator || typeof iterator.next !== 'function') {
+			return callback(iterator);
+		}
+		return next();
 	}
 
 	return future;
 }
 
-module.exports=co;
+module.exports = co;

@@ -1,9 +1,10 @@
 /**
- * Created by yyrdl on 2017/3/14.
+ * Created by jason on 2017/3/16.
  */
+var co = require('when/generator');
+var actions=require("../actions");
+var Promise=require("bluebird");
 
-var  Promise=require("bluebird");
-var  actions=require("../actions");
 
 let getUserinfo=function(){
     return new Promise((resolve,reject)=>{
@@ -56,18 +57,20 @@ let updateAge=function(age){
     });
 }
 
-exports.run=function(commitor,cb){
-    getUserinfo().then(function(userinfo){
-       commitor.commit();
-       return articleList(userinfo.user)
-    }).then(function(list){
-       commitor.commit();
-       return getArticle(list[0])
-    }).then(function(a){
-        commitor.commit();
-        return updateAge(23);
-    }).then(function(){
-        cb();
-    })
+
+module.exports=function (a,b,c,callback) {
+
+    co.call(function*() {
+        var userinfo=yield getUserinfo() ;
+
+        var list=yield articleList(userinfo.user);
+
+        yield updateAge(23);
+
+        var article=yield getArticle(list[0]);
+
+        return article;
+
+    }).then(callback);
 }
- 
+

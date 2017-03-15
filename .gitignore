@@ -5,3 +5,5 @@ npm-debug.log
 
 #npm dependency
 node_modules
+#bench dependency
+benchmark/node_modules

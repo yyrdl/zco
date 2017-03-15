@@ -2,12 +2,8 @@
  * Created by yyrdl on 2017/3/14.
  */
 
-var co=require("co");
-
-
-var actions=require("../actions");
-
-//需要将回调包装成 promsie,convert callback  to promise
+var  Promise=require("bluebird");
+var  actions=require("../actions");
 
 let getUserinfo=function(){
     return new Promise((resolve,reject)=>{
@@ -47,6 +43,7 @@ let getArticle=function(arti){
 }
 
 
+
 let updateAge=function(age){
     return new Promise((resolve,reject)=>{
         actions.updateAge(age,function(err){
@@ -59,25 +56,15 @@ let updateAge=function(age){
     });
 }
 
-exports.run=function(commitor,cb){
-    co(function*(){
-        var userinfo=yield getUserinfo() ;
-
-        commitor.commit();
-
-        var list=yield articleList(userinfo.user);
-
-        commitor.commit();
-
-        yield updateAge(23);
-
-        commitor.commit();
-
-        var article=yield getArticle(list[0]);
-
-        return article;
-
-    }).then((err,art)=>{
+module.exports=function(stream,idOrPath,tag,cb){
+    getUserinfo().then(function(userinfo){
+       return articleList(userinfo.user)
+    }).then(function(list){
+       return getArticle(list[0])
+    }).then(function(a){
+        return updateAge(23);
+    }).then(function(){
         cb();
     })
 }
+ 
