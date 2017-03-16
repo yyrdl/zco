@@ -5,6 +5,15 @@ generator based control flow,inspired by tj's [co](https://github.com/tj/co) , b
 
 recommend version of node.js(or iojs)  which support the destructuring assignment syntax.
 
+# why zco?
+
+   The most of operations in node.js(or webside) is based on callback,people convert callback-style-code to Promise-style-code(or other style)
+in order to making control flow clearly.But it is not good enough,we want to writing sync-style-code.we have created a few modules
+that allow us writing sync-style-code.
+
+   Many other modules require a Promise returned by expression after yield,it's not necessary if we just want to making control-flow
+clearly. __zco__ only work with callback,do less operation. zco has good performance among these coroutine modules(see performance statistics below).
+
 # performance battle
 
     results for 20000 parallel executions, 1 ms per I/O op ,2017-03-16
