@@ -3,6 +3,8 @@
 var util=require("./util");
 var fs=require("fs");
 var path = require('path');
+var exec=require("child_process").exec;
+
 
 
 function printPlatform() {
@@ -24,43 +26,6 @@ function printPlatform() {
     console.log(plat + "\n" + cpus + "\n");
 }
 
-var measure=function(fn,times,callback){
-
-    var start = Date.now();
-
-    var warmedUp = 0;
-    var tot =  Math.min( 350, times );
-    for (var k = 0, kn = tot; k < kn; ++k)
-        fn(k,'b','c', warmup);
-
-    var memMax; var memStart; var start;
-
-    function cb () {
-
-        memMax = Math.max(memMax, process.memoryUsage().rss);
-        if (!--times) {
-            fn.end && fn.end();
-            callback(null, {
-                time: Date.now() - start,
-                mem: (memMax - memStart)/1024/1024
-            });
-        }
-    }
-    function warmup() {
-        warmedUp++
-        if( warmedUp === tot ) {
-            start = Date.now();
-
-            memStart = process.memoryUsage().rss;
-            for (var k = 0, kn = times; k < kn; ++k) {
-                fn(k, 'b', 'c', cb);
-            }
-            memMax = process.memoryUsage().rss;
-        }
-    }
-}
-var measureStats=[];
-
 var blank=function(num){
     var str="";
     for(var i=0;i<num;i++){
@@ -68,14 +33,14 @@ var blank=function(num){
     }
     return str;
 }
-var writeReport=function(){
+var write=function(measureStats){
     var len=[];
     measureStats=measureStats.sort(function(a,b){
         return parseInt(a[1])>parseInt(b[1])?1:-1;
     });
 
     measureStats.unshift(["name","timecost(ms)","memery(mb)"]);
-    
+
     for(var i=0;i<measureStats[0].length;i++){
         var l=0;
         for(var j=0;j<measureStats.length;j++){
@@ -92,42 +57,64 @@ var writeReport=function(){
         }
         lines+="\n";
     }
-     console.log("\n"+lines);
-     fs.writeFile("./report.txt",lines,function () {
-         
-     })
-}
-var calmdown=function (func) {
-    setTimeout(function(){
-        func();
-    },10000)
-}
-var  run=function(moduleDirs,times){
-     times=times||50;
-     var __path=path.join(__dirname,moduleDirs);
-     util.fileList(__path,function(err,files){
-         var index=0;
-         var cb=function(er,reportData){
-		    
-             measureStats.push([files[index]+"",reportData.time+"",reportData.mem+""]);
-             index++;
-             if(index==files.length){
-                 writeReport();
-                 console.log("all case done");
-             }else{
-               calmdown(function(){
-                   doMeasure();
-               })
-             }
-         }
-         var doMeasure=function(){
-             console.log("start measure "+files[index]);
-             var fn=require(path.join(__path,files[index]));
+    console.log("\n"+lines);
+    fs.writeFile("./report.txt",lines,function () {
 
-             measure(fn,times,cb)
-         }
-         doMeasure();
-     })
+    })
+}
+
+var writeReport=function () {
+    fs.readFile("./report.txt",function(err,data){
+        if(err){
+            console.log(err);
+        }else{
+           data=data.toString();
+           var items=data.split(";");
+           var measureStat=[];
+           for(var i=0;i<items.length;i++){
+               if(items[i].length>5){
+                   var p=items[i].split(",");
+                   measureStat.push(p);
+               }
+           }
+            write(measureStat);
+        }
+    })
+}
+
+var  run=function(moduleDirs,times){
+    var __path=path.join(__dirname,moduleDirs);
+
+    util.fileList(__path,function(err,files){
+        var index=0
+        var cb=function () {
+            index++;
+            if(index<files.length){
+                doMeasure();
+            }else{
+                writeReport();
+            }
+
+        }
+        var doMeasure=function(){
+            var m=path.join(__path,files[index]);
+            console.log("start measure "+files[index]);
+            var proc=exec("node do.js --m "+m+"  --n "+files[index]+"  --t "+times,{
+                "cwd":__dirname
+            },function(err,stdout,stderr){
+
+            })
+            proc.on("exit",function(){
+              cb();
+            });
+            proc.stdout.on("data",function(d){
+                console.log(d.toString());
+            })
+        }
+        fs.writeFile("./report.txt"," ",function () {
+            doMeasure();
+        })
+    })
 }
 
 printPlatform();

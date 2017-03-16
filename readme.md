@@ -1,6 +1,7 @@
+
 # zco
 
-inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only callback.
+generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only callback.
 
 
 # useage
@@ -55,3 +56,6 @@ co(function*(run){
 })
 
 ```
+# License
+
+MIT

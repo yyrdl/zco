@@ -6,15 +6,15 @@ var slice = Array.prototype.slice;
 var co = function (gen) {
 
 	var iterator,
-	callback;
+	callback = null;
 
 	var _end = function (e, v) {
-		 callback(e, v); //I shoudn't catch the error throwed by user's callback
+		callback && callback(e, v); //I shoudn't catch the error throwed by user's callback
 	}
 
 	var next = function () {
 		var v = iterator.next(slice.call(arguments));
-		 v.done && _end(undefined, v.value);
+		return v.done && _end(undefined, v.value);
 	}
 
 	var run = function () {
@@ -22,25 +22,23 @@ var co = function (gen) {
 		var func = args.shift();
 		args.push(next);
 		try {
-			 func.apply(null, args);
+			func.apply(this, args);
 		} catch (e) {
-			 _end(e);
+			return _end(e);
 		}
 	}
-	if (typeof gen === 'function') {
+
+	if ("[object GeneratorFunction]" === Object.prototype.toString.call(gen)) {
 		iterator = gen(run);
+	} else {
+		throw new TypeError("the arg of co must be generator function")
 	}
 
 	var future = function (cb) {
-		if ("function" != typeof cb) {
-			throw new TypeError("the first argument must be function");
-			return;
+		if ("function" == typeof cb) {
+			callback = cb;
 		}
-		callback = cb;
-		if (!iterator || typeof iterator.next !== 'function') {
-			return callback(iterator);
-		}
-		return next();
+		next();
 	}
 
 	return future;
