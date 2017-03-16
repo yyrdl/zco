@@ -10,7 +10,7 @@
     "mocha": "*",
     "chai": "3.4.0",
     "path": "*"
-  }
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yyrdl/co.git"
