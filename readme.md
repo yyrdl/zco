@@ -7,12 +7,12 @@ recommend version of node.js(or iojs)  which support the destructuring assignmen
 
 # why zco?
 
-   The most of operations in node.js(or webside) is based on callback,people convert callback-style-code to Promise-style-code(or other style)
-in order to making control flow clearly.But it is not good enough,we want to writing sync-style-code.we have created a few modules
+   The majority of operations in node.js(or webside) is based on callback,people convert callback-style-code to Promise-style-code(or other style)
+in order to making control-flow clearly.But it is not good enough,we want to writing sync-style-code,and we have created some modules
 that allow us writing sync-style-code.
 
-   Many other modules require a Promise returned by expression after yield,it's not necessary if we just want to making control-flow
-clearly. __zco__ only work with callback,do less operation. zco has good performance among these coroutine modules(see performance statistics below).
+   Many other modules require a Promise object returned by expression after `yield`,it's not necessary if we just want a clear control-flow.
+__zco__ only work with callback,do less operation and has good performance among these coroutine modules(see performance statistics below).
 
 # performance battle
 
@@ -43,6 +43,7 @@ clearly. __zco__ only work with callback,do less operation. zco has good perform
 
 	npm install zco
 
+# example
 
 ```javascript
 
@@ -103,7 +104,7 @@ co(function*(run){
     console.log(err);//undefined
     console.log(age);//100
 })
-/***************************************************************/
+/*************************co chain**************************************/
 
 let async_func2=function(a,b,c,callback){
     setTimeout(()=>{
