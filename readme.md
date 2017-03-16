@@ -1,8 +1,9 @@
 
-# zco
+# zco ![build status](https://travis-ci.org/yyrdl/zco.svg?branch=master)
 
 generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only callback.
 
+recommend version of node.js(or iojs)  which support the destructuring assignment syntax.
 
 # useage
 
