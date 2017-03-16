@@ -47,12 +47,6 @@ let async_func1=function(callback){
     },10)
 }
 
-let async_func2=function(a,b,c,callback){
-    setTimeout(()=>{
-        callback(a+b+c);
-    },10)
-}
-
 /*****************************simple use***************************/
 co(function *(run) {
     let [err,str]=yield run(async_func1);
@@ -101,6 +95,12 @@ co(function*(run){
     console.log(age);//100
 })
 /***************************************************************/
+
+let async_func2=function(a,b,c,callback){
+    setTimeout(()=>{
+        callback(a+b+c);
+    },10)
+}
 
 let co_func1=function(a,b,c){
     return co(function *(run) {
