@@ -1,13 +1,13 @@
 name                                      timecost(ms)     memery(mb)       
-callback.js                               142              31.34765625      
- async-neo.js                             312              51.66015625      
-promise_bluebird.js                       466              68.1640625       
-co_when_cujojs.js                         1136             100.73828125     
-co_yyrdl.js                               1167             76.97265625      
-async_caolan.js                           1200             122.4296875      
-co_tj_with_bluebird_promise.js            1533             113.74609375     
-co_when_cujojs_with_bluebird.js           1679             125.046875       
-promise_native.js                         1916             188.89453125     
-co_when_cujojs_with_native_promise.js     2289             152.55859375     
-co_tj_with_native_promise.js              2540             170.2109375      
-co_bluebird.js                            4949             132.43359375     
+callback.js                               125              30.55078125      
+async-neo.js                              258              51.69140625
+promise_bluebird.js                       424              68.74609375      
+co_when_cujojs.js                         966              100.9296875      
+co_yyrdl.js                               1005             76.94140625      
+async_caolan.js                           1007             122.41015625     
+co_tj_with_bluebird_promise.js            1390             114.3125         
+co_when_cujojs_with_bluebird.js           1391             125.3359375      
+promise_native.js                         1648             191              
+co_when_cujojs_with_native_promise.js     1972             153.39453125     
+co_tj_with_native_promise.js              2330             170.40625        
+co_bluebird.js                            4184             139.48046875     
