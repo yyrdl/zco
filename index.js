@@ -13,19 +13,20 @@ var co = function (gen) {
 	}
 
 	var next = function () {
-		var v = iterator.next(slice.call(arguments));
-		return v.done && _end(undefined, v.value);
+		try {
+			var v = iterator.next(slice.call(arguments));
+			v.done && _end(undefined, v.value);
+		} catch (e) {
+			_end(e);
+		}
 	}
 
 	var run = function () {
 		var args = slice.call(arguments);
 		var func = args.shift();
 		args.push(next);
-		try {
-			func.apply(this, args);
-		} catch (e) {
-			return _end(e);
-		}
+		func.apply(this, args);
+		return 0;
 	}
 
 	if ("[object GeneratorFunction]" === Object.prototype.toString.call(gen)) {

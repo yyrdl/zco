@@ -53,9 +53,19 @@ describe("normal use",function(){
        })()
    });
 
-   it("catch sync code error",function(){
+   it("catch sync code error1",function(){
        co(function *(run) {
            var a=yield run(sync_code_error);
+           return 10;
+       })(function(err,v){
+           expect(err).to.not.equal(undefined);
+       })
+   })
+   
+   it("catch sync code error2",function(){
+       co(function *(run) {
+           var a=yield run(async_func1);
+		   throw new Error("manual error");
            return 10;
        })(function(err,v){
            expect(err).to.not.equal(undefined);
