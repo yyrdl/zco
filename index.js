@@ -20,17 +20,9 @@ var co = function (gen) {
 			_end(e);
 		}
 	}
-
-	var run = function () {
-		var args = slice.call(arguments);
-		var func = args.shift();
-		args.push(next);
-		func.apply(this, args);
-		return 0;
-	}
-
+	
 	if ("[object GeneratorFunction]" === Object.prototype.toString.call(gen)) {
-		iterator = gen(run);
+		iterator = gen(next);
 	} else {
 		throw new TypeError("the arg of co must be generator function")
 	}

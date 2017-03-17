@@ -7,14 +7,14 @@ var co=require("../../index");
 var actions=require("../actions");
 
 module.exports=function(stream,idOrPath,tag,cb){
-    co(function*(run){
-        var [err,userinfo]=yield  run(actions.getUserinfo);
+    co(function*(next){
+        var [err,userinfo]=yield  actions.getUserinfo(next);
 
-        var [err,list]=yield run(actions.articleList,userinfo.user);
+        var [err,list]=yield actions.articleList(userinfo.user,next);
 
-        yield run(actions.updateAge,23);
+        yield actions.updateAge(23,next);
 
-        var [err,article]=yield run(actions.getArticle,list[0]);
+        var [err,article]=yield actions.getArticle(list[0],next);
 
         return article;
 

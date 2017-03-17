@@ -39,23 +39,23 @@ var people={
 describe("normal use",function(){
 
    it("no args no callback",function(){
-       co(function *(run) {
-           var [err,str]=yield run(async_func1);
+       co(function *(next) {
+           var [err,str]=yield async_func1(next);
            expect(err).to.equal(undefined);
            expect(str).to.equal("hello world");
        })()
    })
 
-   it("context delivery",function () {
-       co(function*(run){
-          var [age]=yield  run.call(people,people.say);
+   it("context test",function () {
+       co(function*(next){
+          var [age]=yield  people.say(next);
           expect(age).to.equal(100);
        })()
    });
 
    it("catch sync code error1",function(){
-       co(function *(run) {
-           var a=yield run(sync_code_error);
+       co(function *(next) {
+           var a=yield sync_code_error(next);
            return 10;
        })(function(err,v){
            expect(err).to.not.equal(undefined);
@@ -63,8 +63,8 @@ describe("normal use",function(){
    })
    
    it("catch sync code error2",function(){
-       co(function *(run) {
-           var a=yield run(async_func1);
+       co(function *(next) {
+           var a=yield async_func1(next);
 		   throw new Error("manual error");
            return 10;
        })(function(err,v){
@@ -73,8 +73,8 @@ describe("normal use",function(){
    })
 
    it("delivery return value",function(){
-      co(function*(run){
-         var [age]=yield run.call(people,people.say);
+      co(function*(next){
+         var [age]=yield people.say(next);
          return age;
       })(function(err,age){
           expect(err).to.equal(undefined);
@@ -85,23 +85,23 @@ describe("normal use",function(){
 });
 
 var co_func1=function(a,b,c){
-    return co(function *(run) {
-        var [d]=yield run(async_func2,a,b,c);
+    return co(function *(next) {
+        var [d]=yield async_func2(a,b,c,next);
         return d;
     })
 }
 
 var co_func2=function(a,b,c){
-    return co(function*(run){
-       var [err,data]=yield run(co_func1(a,b,c));
+    return co(function*(next){
+        var [err,data]=yield co_func1(a,b,c)(next);
         return data;
     })
 }
 
 describe("co chain",function(){
     it("chain testing",function(){
-        co(function*(run){
-            var [err,d]=yield run(co_func2(1,2,3));
+        co(function*(next){
+            var [err,d]=yield co_func2(1,2,3)(next);
             expect(err).to.equal(undefined);
             return d;
         })(function(err,d){
