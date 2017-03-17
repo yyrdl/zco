@@ -1,9 +1,9 @@
 
 # ZCO ![build status](https://travis-ci.org/yyrdl/zco.svg?branch=master)
 
-generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only callback.
+Generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only callback.
 
-recommend version of node.js(or iojs)  which support the destructuring assignment syntax.
+Recommend version of node.js(or iojs)  which support the destructuring assignment syntax.
 
 # Why zco?
 
@@ -14,7 +14,7 @@ that allow us writing sync-style-code.
    Many other modules require a Promise object returned by expression after `yield`,it's not necessary if we just want a clear control-flow.
 __zco__ only work with callback,do less operation and has good performance among these coroutine modules(see performance statistics below).
 
-# performance battle
+# Performance Battle
 
     results for 20000 parallel executions, 1 ms per I/O op ,2017-03-17
 
