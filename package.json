@@ -4,12 +4,13 @@
   "description": "co_routine code style in js ,work with callback,and no promise",
   "main": "index.js",
   "scripts": {
-    "test":"mocha --recursive --timeout 1000"
+	"test":"node --harmony node_modules/.bin/istanbul cover ./node_modules/.bin/_mocha --report lcovonly -- --reporter dot"
   },
   "devDependencies": {
     "mocha": "*",
     "chai": "3.4.0",
-    "path": "*"
+    "path": "*",
+	"istanbul-harmony": "0.4.5",
   },
   "repository": {
     "type": "git",
