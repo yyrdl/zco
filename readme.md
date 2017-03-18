@@ -29,19 +29,19 @@ __zco__ only work with callback,do less operation and has good performance among
 
     results for 20000 parallel executions, 1 ms per I/O op ,2017-03-17
 
-    name                                          timecost(ms)     memery(mb)
-    callback.js                                   128              31.33984375
-    async-neo.js@1.8.2                            261              51.6875
-    promise_bluebird.js@2.11.0                    396              68.75
-    co_yyrdl.js@1.2.0                             863              76.57421875
-    co_when_cujojs.js@3.7.8                       928              101.078125
-    async_caolan.js@1.5.2                         996              122.52734375
-    co_tj_with_bluebird_promise.js@4.6.0          1206             113.9609375
-    co_when_cujojs_with_bluebird.js@3.7.8         1242             120.796875
-    promise_native.js                             1536             187.37890625
-    co_when_cujojs_with_native_promise.js@3.7.8   1866             154.21484375
-    co_tj_with_native_promise.js@4.6.0            2022             187.28515625
-    co_bluebird.js@2.11.0                         4066             142.3671875
+    name                                                    timecost(ms)     memery(mb)
+    callback.js                                             128              31.33984375
+    async-neo.js@1.8.2                                      261              51.6875
+    promise_bluebird.js@2.11.0                              396              68.75
+    co_zco_yyrdl.js@1.2.0                                   863              76.57421875
+    co_when_generator_cujojs.js@3.7.8                       928              101.078125
+    async_caolan.js@1.5.2                                   996              122.52734375
+    co_tj_with_bluebird_promise.js@4.6.0                    1206             113.9609375
+    co_when_generator_cujojs_with_bluebird.js@3.7.8         1242             120.796875
+    promise_native.js                                       1536             187.37890625
+    co_when_generator_cujojs_with_native_promise.js@3.7.8   1866             154.21484375
+    co_tj_with_native_promise.js@4.6.0                      2022             187.28515625
+    co_bluebird_coroutine.js@2.11.0                         4066             142.3671875
 
     Platform info:
     Windows_NT 10.0.14393 x64
