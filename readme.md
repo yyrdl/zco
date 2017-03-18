@@ -359,11 +359,11 @@ getAllJsFilePureCallbackVersion(testDirectory,(err,files)=>{
 For these four coding-style, if in consideration of performance,I will chose callback ,if not I will chose zco,because it is more
 brief and has good performance.
 
-# Import!
+# Important!
 
 ```javascript
 
-let real_async_func=function(a,b,callback){//the last arg must be callback ,import!
+let real_async_func=function(a,b,callback){//the last arg must be callback ,important!
     setTimeout(function(){
         callback(a+b);
     },10)
@@ -376,7 +376,7 @@ let sync_code=function(callback){
 co(function*(next){
     let [result]=yield real_async_func(1,2,next);
     console.log(result);//3
-    let [str]=yield sync_code(next);//this code will make error,because it is not real-async operation,import!
+    let [str]=yield sync_code(next);//this code will make error,because it is not real-async operation,important!
     console.log(str);
 })((err,d)=>{
    if(err){
