@@ -8,12 +8,12 @@ Recommend version of node.js(or iojs)  which support the destructuring assignmen
 
 # Table Of Contents
 
-*  [Why zco](#-why-zco)
-*  [Performance Battle](#-performance-battle)
-*  [Useage](#-useage)
-*  [Example](#-example)
-*  [Compare with tj's co,Promise,and callback when do samething](#-compare)
-*  [Important](#-important)
+*  [Why zco](#why-zco)
+*  [Performance Battle](#performance-battle)
+*  [Useage](#useage)
+*  [Example](#example)
+*  [Compare with tj's co,Promise,and callback when do samething](#compare)
+*  [Important](#important)
 
 
 # Why zco?
