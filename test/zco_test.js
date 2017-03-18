@@ -111,4 +111,19 @@ describe("co chain",function(){
     })
 })
 
+describe("throw error when not a generator function",function () {
+     it("should throw error",function(){
+         let error=undefined;
+         try {
+             co(function(){
+                 var [err,d]=yield co_func2(1,2,3)(next);
+                 return d;
+             })()
+         }catch (e){
+            error=e;
+         }finally {
+             expect(error).to.not.equal(undefined)
+         }
+     })
+})
 
