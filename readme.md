@@ -41,7 +41,7 @@ __zco__ only work with callback,do less operation and has good performance among
     promise_native.js                                       1536             187.37890625
     co_when_generator_cujojs_with_native_promise.js@3.7.8   1866             154.21484375
     co_tj_with_native_promise.js@4.6.0                      2022             187.28515625
-    co_bluebird_coroutine.js@2.11.0                         4066             142.3671875
+    co_bluebird_coroutine.js@2.11.0                         4066             142.3671875
 
     Platform info:
     Windows_NT 10.0.14393 x64
