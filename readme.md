@@ -1,5 +1,5 @@
 
-# ZCO ![build status](https://travis-ci.org/yyrdl/zco.svg?branch=master)[![Coverage Status](https://coveralls.io/repos/github/yyrdl/zco/badge.svg?branch=master)](https://coveralls.io/github/yyrdl/zco?branch=master)
+# ZCO ![build status](https://travis-ci.org/yyrdl/zco.svg?branch=master) [![Coverage Status](https://coveralls.io/repos/github/yyrdl/zco/badge.svg?branch=master)](https://coveralls.io/github/yyrdl/zco?branch=master)
 
 Generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only callback.
 
