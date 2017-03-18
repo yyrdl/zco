@@ -8,7 +8,6 @@ const fs=require("fs");
 
 const testDirectory="./cases";
 
-
 let getAllJsFileZCOVersion=function(dirname){
     return zco(function*(next){
         var files=[];

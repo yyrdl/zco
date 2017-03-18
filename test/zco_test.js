@@ -114,15 +114,18 @@ describe("co chain",function(){
 describe("throw error when not a generator function",function () {
      it("should throw error",function(){
          let error=undefined;
-         try {
+         try{
              co(function(){
-                 var [err,d]=yield co_func2(1,2,3)(next);
+                 var d=10;
                  return d;
-             })()
+             })();
          }catch (e){
-            error=e;
+             error=e;
          }finally {
-             expect(error).to.not.equal(undefined)
+             expect(error).to.not.equal(undefined);
+             if(error){
+                 expect(error.message).to.equal("the arg of co must be generator function");
+             }
          }
      })
 })
