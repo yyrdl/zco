@@ -10,7 +10,7 @@
 		"mocha" : "*",
 		"chai" : "3.4.0",
 		"path" : "*",
-		"istanbul-harmony" : "0.4.5"
+		"istanbul-harmony" : "0"
 	},
 	"repository" : {
 		"type" : "git",
