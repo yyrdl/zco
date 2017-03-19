@@ -1,7 +1,7 @@
 /**
  * Created by yyrdl on 2017/3/14.
  */
-var actions=require("../actions");
+const actions=require("../actions");
 
 module.exports=function(stream,idOrPath,tag,cb){
     actions.getUserinfo(function(err,userinfo){

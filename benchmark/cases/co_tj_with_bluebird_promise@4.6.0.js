@@ -2,7 +2,11 @@
  * Created by yyrdl on 2017/3/14.
  */
 
-const  actions=require("../actions");
+const co=require("co");
+const Promise=require("bluebird");
+const actions=require("../actions");
+
+//需要将回调包装成 promsie,convert callback  to promise
 
 let getUserinfo=function(){
     return new Promise((resolve,reject)=>{
@@ -42,7 +46,6 @@ let getArticle=function(arti){
 }
 
 
-
 let updateAge=function(age){
     return new Promise((resolve,reject)=>{
         actions.updateAge(age,function(err){
@@ -56,13 +59,18 @@ let updateAge=function(age){
 }
 
 module.exports=function(stream,idOrPath,tag,cb){
-    getUserinfo().then(function(userinfo){
-        return articleList(userinfo.user)
-    }).then(function(list){
-        return getArticle(list[0])
-    }).then(function(a){
-        return updateAge(23);
-    }).then(function(){
+    co(function*(){
+        var userinfo=yield getUserinfo() ;
+
+        var list=yield articleList(userinfo.user);
+
+        yield updateAge(23);
+
+        var article=yield getArticle(list[0]);
+
+        return article;
+
+    }).then((art)=>{
         cb();
     }).catch((err)=>{
         cb();

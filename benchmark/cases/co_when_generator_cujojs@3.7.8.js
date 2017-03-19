@@ -1,9 +1,10 @@
 /**
- * Created by yyrdl on 2017/3/14.
+ * Created by jason on 2017/3/16.
  */
+const co = require('when/generator');
+const actions=require("../actions");
+const Promise=require("when").promise;
 
-var  Promise=require("bluebird");
-var  actions=require("../actions");
 
 let getUserinfo=function(){
     return new Promise((resolve,reject)=>{
@@ -56,15 +57,22 @@ let updateAge=function(age){
     });
 }
 
-module.exports=function(stream,idOrPath,tag,cb){
-    getUserinfo().then(function(userinfo){
-       return articleList(userinfo.user)
-    }).then(function(list){
-       return getArticle(list[0])
-    }).then(function(a){
-        return updateAge(23);
-    }).then(function(){
-        cb();
-    })
+
+module.exports=function (a,b,c,callback) {
+
+    co.call(function*() {
+        var userinfo=yield getUserinfo() ;
+
+        var list=yield articleList(userinfo.user);
+
+        yield updateAge(23);
+
+        var article=yield getArticle(list[0]);
+
+        return article;
+
+    }).then(callback).catch((err)=>{
+        callback();
+    });
 }
- 
+

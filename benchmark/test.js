@@ -24,16 +24,25 @@ let getAllJsFileZCOVersion=function(dirname){
         return files;
     });
 }
-
-//then use it
-zco(function*(next){
-   var [err,jsFiles]=yield getAllJsFileZCOVersion(testDirectory)(next);
-   if(err){
-       console.log(err.message);
-   }else{
-       console.log(jsFiles);
-   }
-})();
+//
+// //then use it
+// getAllJsFileZCOVersion(testDirectory)((err,jsFiles)=>{
+//     if(err){
+//         console.log(err.message);
+//     }else{
+//         console.log(jsFiles);
+//     }
+// });
+//
+// //or
+// zco(function*(next){
+//    var [err,jsFiles]=yield getAllJsFileZCOVersion(testDirectory)(next);
+//    if(err){
+//        console.log(err.message);
+//    }else{
+//        console.log(jsFiles);
+//    }
+// })();
 
 /**************************tj co version************************************/
 
@@ -75,12 +84,12 @@ let getAllJsFileTJCOVersion=function(dirname){
 }
 
 //then use it
-
-getAllJsFileTJCOVersion(testDirectory).then((files)=>{
-    console.log(files);
-}).catch((err)=>{
-    console.log(err);
-})
+//
+// getAllJsFileTJCOVersion(testDirectory).then((files)=>{
+//     console.log(files);
+// }).catch((err)=>{
+//     console.log(err);
+// })
 
 
 /************************pure Promise version*****************************/
@@ -127,12 +136,12 @@ let getAllJsFilePurePromiseVersion=function (dirname) {
     });
 }
 //then use it
-
-getAllJsFilePurePromiseVersion(testDirectory).then((files)=>{
-    console.log(files);
-}).catch((err)=>{
-    console.log(err);
-})
+//
+// getAllJsFilePurePromiseVersion(testDirectory).then((files)=>{
+//     console.log(files);
+// }).catch((err)=>{
+//     console.log(err);
+// })
 
 /***********************pure callback version********************************/
 
@@ -176,11 +185,62 @@ let getAllJsFilePureCallbackVersion=function(dirname,callback){
 }
 
 //then use it
+//
+// getAllJsFilePureCallbackVersion(testDirectory,(err,files)=>{
+//     if(err){
+//         console.log(err);
+//     }else{
+//         console.log(files);
+//     }
+// })
+/********************************async await es7*********************************/
 
-getAllJsFilePureCallbackVersion(testDirectory,(err,files)=>{
-    if(err){
-        console.log(err);
-    }else{
-        console.log(files);
-    }
-})
+let getAllJsFileAsyncAwaitES7Version=async function (dirname) {
+       let list=await  readdir(dirname);
+       let files=[];
+       for(let i=0;i<list.length;i++){
+           let stats=await stat(dirname+"/"+list[i]);
+           if(stats.isFile()&&list[i].endsWith(".js")){
+               files.push(list[i]);
+           }
+       }
+       return files;
+}
+
+ getAllJsFileAsyncAwaitES7Version(testDirectory).then((files)=>{
+     console.log(files);
+ }).catch((err)=>{
+     console.log(err);
+ })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

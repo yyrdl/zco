@@ -15,7 +15,7 @@ Recommend version of node.js(or iojs)  which support the destructuring assignmen
 *  [Performance Battle](#performance-battle)
 *  [Useage](#useage)
 *  [Example](#example)
-*  [Compare with tj's co,Promise,and callback when do samething](#compare)
+*  [Compare with tj's co,Promise, callback,and ES7 "async/await" when do samething](#compare)
 *  [Important](#important)
 
 
@@ -30,26 +30,28 @@ __zco__ only work with callback,do less operation and has good performance among
 
 # Performance Battle
 
-    results for 20000 parallel executions, 1 ms per I/O op ,2017-03-17
+    results for 20000 parallel executions, 1 ms per I/O op ,2017-03-19
 
-    name                                                    timecost(ms)     memery(mb)
-    callback.js                                             128              31.33984375
-    async-neo.js@1.8.2                                      261              51.6875
-    promise_bluebird.js@2.11.0                              396              68.75
-    co_zco_yyrdl.js@1.2.0                                   863              76.57421875
-    co_when_generator_cujojs.js@3.7.8                       928              101.078125
-    async_caolan.js@1.5.2                                   996              122.52734375
-    co_tj_with_bluebird_promise.js@4.6.0                    1206             113.9609375
-    co_when_generator_cujojs_with_bluebird.js@3.7.8         1242             120.796875
-    promise_native.js                                       1536             187.37890625
-    co_when_generator_cujojs_with_native_promise.js@3.7.8   1866             154.21484375
-    co_tj_with_native_promise.js@4.6.0                      2022             187.28515625
-    co_bluebird_coroutine.js@2.11.0                         4066             142.3671875
+    name                                                      timecost(ms)     memery(mb)
+    callback.js                                               116              30.30078125
+    async-neo@1.8.2.js                                        187              48.52734375
+    promise_bluebird@2.11.0.js                                713              93.58984375
+    co_zco_yyrdl@1.2.0.js                                     800              76.375
+    async_caolan@1.5.2.js                                     1100             122.515625
+    co_when_generator_cujojs@3.7.8.js                         1159             118.69921875
+    co_when_generator_cujojs_with_bluebird@3.7.8.js           1359             136.29296875
+    co_tj_with_bluebird_promise@4.6.0.js                      1386             125.58203125
+    promise_native.js                                         1451             171.72265625
+    async_await_es7_with_native_promise.js                    1526             170.234375
+    co_when_generator_cujojs_with_native_promise@3.7.8.js     1720             165.0703125
+    co_tj_with_native_promise@4.6.0.js                        1753             162.3203125
+    async_await_es7_with_bluebird_promise.js                  1891             197.7109375
+    co_coroutine_bluebird@2.11.0.js                           4446             244.984375
 
     Platform info:
     Windows_NT 10.0.14393 x64
-    Node.JS 6.10.0
-    V8 5.1.281.93
+    Node.JS 7.7.3
+    V8 5.5.372.41
     Intel(R) Core(TM) i5-3210M CPU @ 2.50GHz × 4
 
 # Useage
@@ -357,6 +359,53 @@ getAllJsFilePureCallbackVersion(testDirectory,(err,files)=>{
         console.log(files);
     }
 })
+```
+
+###  ES7 Async/Await
+
+```javascript
+const fs=require("fs");
+const testDirectory="./cases";
+
+let readdir=function(dirname){
+    return new Promise((resolve,reject)=>{
+        fs.readdir(dirname,(err,list)=>{
+           if(err){
+               reject(err);
+           }else{
+               resolve(list);
+           }
+        })
+    })
+}
+let stat=function(file){
+    return new Promise((resolve,reject)=>{
+        fs.stat(file,(err,stats)=>{
+            if(err){
+                reject(err);
+            }else{
+                resolve(stats);
+            }
+        })
+    });
+}
+let getAllJsFileAsyncAwaitES7Version=async function (dirname) {
+       let list=await  readdir(dirname);
+       let files=[];
+       for(let i=0;i<list.length;i++){
+           let stats=await stat(dirname+"/"+list[i]);
+           if(stats.isFile()&&list[i].endsWith(".js")){
+               files.push(list[i]);
+           }
+       }
+       return files;
+}
+
+ getAllJsFileAsyncAwaitES7Version(testDirectory).then((files)=>{
+     console.log(files);
+ }).catch((err)=>{
+     console.log(err);
+ })
 ```
 
 For these four coding-style, if in consideration of performance,I will chose callback ,if not I will chose zco,because it is more

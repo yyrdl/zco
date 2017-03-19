@@ -1,10 +1,11 @@
 /**
- * Created by jason on 2017/3/16.
+ * Created by jason on 2017/3/19.
  */
-var co = require('when/generator');
-var actions=require("../actions");
-var Promise=require("bluebird");
 
+const Promise=require("bluebird");
+const actions=require("../actions");
+
+//需要将回调包装成 promsie,convert callback  to promise
 
 let getUserinfo=function(){
     return new Promise((resolve,reject)=>{
@@ -44,7 +45,6 @@ let getArticle=function(arti){
 }
 
 
-
 let updateAge=function(age){
     return new Promise((resolve,reject)=>{
         actions.updateAge(age,function(err){
@@ -57,20 +57,31 @@ let updateAge=function(age){
     });
 }
 
+module.exports=function(stream,idOrPath,tag,cb){
+    (async ()=>{
+        var userinfo=await getUserinfo() ;
 
-module.exports=function (a,b,c,callback) {
+        var list=await articleList(userinfo.user);
 
-    co.call(function*() {
-        var userinfo=yield getUserinfo() ;
+        await updateAge(23);
 
-        var list=yield articleList(userinfo.user);
-
-        yield updateAge(23);
-
-        var article=yield getArticle(list[0]);
+        var article=await getArticle(list[0]);
 
         return article;
 
-    }).then(callback);
-}
+    })().then(()=>{
+        cb()
+    }).catch((err)=>{
+     cb()
+    })
+};
+
+
+
+
+
+
+
+
+
 

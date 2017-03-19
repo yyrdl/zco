@@ -1,11 +1,11 @@
 
 
-var util=require("./util");
-var fs=require("fs");
-var path = require('path');
-var exec=require("child_process").exec;
+const util=require("./util");
+const fs=require("fs");
+const path = require('path');
+const exec=require("child_process").exec;
 
-
+const nodeVersion=parseInt(process.versions.node.split(".")[0]);
 
 function printPlatform() {
     console.log("\nPlatform info:");
@@ -84,19 +84,31 @@ var writeReport=function () {
 
 var  run=function(moduleDirs,times){
     var __path=path.join(__dirname,moduleDirs);
-
     util.fileList(__path,function(err,files){
         var index=0
         var cb=function () {
             index++;
             if(index<files.length){
-                doMeasure();
+                judgeNodeVersion();
             }else{
                 writeReport();
             }
 
         }
+        var judgeNodeVersion=function () {
+            if(files[index].indexOf("es7")>-1){
+               if(nodeVersion>6){
+                   doMeasure()
+               }else{
+                   console.log(files[index]+"  require es7 feature,your node version doesn't support,skiped!");
+                   cb();
+               }
+            }else{
+                doMeasure();
+            }
+        }
         var doMeasure=function(){
+
             var m=path.join(__path,files[index]);
             console.log("start measure "+files[index]);
             var proc=exec("node do.js --m "+m+"  --n "+files[index]+"  --t "+times,{
@@ -112,7 +124,7 @@ var  run=function(moduleDirs,times){
             })
         }
         fs.writeFile("./report.txt"," ",function () {
-            doMeasure();
+            judgeNodeVersion();
         })
     })
 }

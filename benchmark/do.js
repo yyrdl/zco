@@ -1,8 +1,8 @@
 
 
-var util=require("./util");
-var fs=require("fs");
-var args = require('optimist').argv;
+const util=require("./util");
+const fs=require("fs");
+const args = require('optimist').argv;
 
 
 

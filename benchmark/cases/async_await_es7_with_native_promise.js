@@ -1,9 +1,10 @@
 /**
- * Created by yyrdl on 2017/3/14.
+ * Created by jason on 2017/3/19.
  */
 
-var  Promise=require("bluebird");
-var  actions=require("../actions");
+const actions=require("../actions");
+
+//需要将回调包装成 promsie,convert callback  to promise
 
 let getUserinfo=function(){
     return new Promise((resolve,reject)=>{
@@ -43,7 +44,6 @@ let getArticle=function(arti){
 }
 
 
-
 let updateAge=function(age){
     return new Promise((resolve,reject)=>{
         actions.updateAge(age,function(err){
@@ -55,17 +55,22 @@ let updateAge=function(age){
         });
     });
 }
+
 module.exports=function(stream,idOrPath,tag,cb){
-    Promise.coroutine(function*(){
-        var userinfo=yield getUserinfo() ;
+    (async ()=>{
+        var userinfo=await getUserinfo() ;
 
-        var list=yield articleList(userinfo.user);
-        yield updateAge(23);
+        var list=await articleList(userinfo.user);
 
-        var article=yield getArticle(list[0]);
+        await updateAge(23);
+
+        var article=await getArticle(list[0]);
 
         return article;
-    })().then(cb);
 
-}
- 
+    })().then(()=>{
+        cb()
+    }).catch((err)=>{
+        cb()
+    })
+};

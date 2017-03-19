@@ -2,9 +2,9 @@
  * Created by yyrdl on 2017/3/14.
  */
 
-var co=require("../../index");
+const co=require("../../index");
 
-var actions=require("../actions");
+const actions=require("../actions");
 
 module.exports=function(stream,idOrPath,tag,cb){
     co(function*(next){

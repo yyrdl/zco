@@ -1,9 +1,9 @@
 /**
  * Created by jason on 2017/3/16.
  */
-var co = require('when/generator');
-var actions=require("../actions");
-var Promise=require("when").promise;
+const co = require('when/generator');
+const actions=require("../actions");
+const Promise=require("bluebird");
 
 
 let getUserinfo=function(){
@@ -71,6 +71,8 @@ module.exports=function (a,b,c,callback) {
 
         return article;
 
-    }).then(callback);
+    }).then(callback).catch((err)=>{
+        callback();
+    });
 }
 

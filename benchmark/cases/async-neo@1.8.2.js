@@ -1,9 +1,9 @@
 /**
  * Created by jason on 2017/3/16.
  */
-var async=require("neo-async");
+const async=require("neo-async");
 
-var actions = require("../actions");
+const actions = require("../actions");
 
 module.exports = function (stream, idOrPath, tag, cb) {
     async.waterfall([

@@ -2,9 +2,10 @@
  * Created by yyrdl on 2017/3/14.
  */
 
-var co=require("co");
-var Promise=require("bluebird");
-var actions=require("../actions");
+const co=require("co");
+
+
+const actions=require("../actions");
 
 //需要将回调包装成 promsie,convert callback  to promise
 
@@ -70,7 +71,9 @@ module.exports=function(stream,idOrPath,tag,cb){
 
         return article;
 
-    }).then((err,art)=>{
+    }).then((art)=>{
+        cb();
+    }).catch((err)=>{
         cb();
     })
 }
