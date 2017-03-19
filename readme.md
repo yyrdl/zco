@@ -144,9 +144,15 @@ co(function*(next){
 })
 
 ```
-# Compare
+# Comparison
 
  Suppose we need to get  javascript file list in directory "./cases",let's write code to do it.
+
+* [zco](#zco-style)
+* [Tj's co](#tj-co-style)
+* [Promise](#promise-style)
+* [Callback](#callback-style)
+* [ES7 Async/Await](#es7-asyncawait)
 
 
 ###  zco style
@@ -176,19 +182,21 @@ co(function*(next){
   }
 
   //then use it
-  zco(function*(next){
-     var [err,jsFiles]=yield getAllJsFileZCOVersion(testDirectory)(next);
-     if(err){
-         console.log(err.message);
-     }else{
-         console.log(jsFiles);
-     }
-  })();
+
+  getAllJsFileZCOVersion(testDirectory)((err,jsFiles)=>{
+       if(err){
+           console.log(err.message);
+       }else{
+           console.log(jsFiles);
+       }
+  });
+
+
 ```
 
 # Tj co style
 
-similar with bluebird.corountin and when/generator
+Similar useage with bluebird.coroutine and when/generator.
 
 ```javascript
  const co=require("co");
