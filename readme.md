@@ -4,7 +4,7 @@
 
 # ZCO ![build status][test_status_url] [![Coverage Status][coverage_status_url]][coverage_page]
 
-Generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only callback.
+Generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only callback,even if it is not a asynchronous operation.
 
 Recommend version of node.js(or iojs)  which support the destructuring assignment syntax.
 
@@ -16,7 +16,6 @@ Recommend version of node.js(or iojs)  which support the destructuring assignmen
 *  [Useage](#useage)
 *  [Example](#example)
 *  [Compare with tj's co,Promise, callback,and ES7 "async/await" when do samething](#comparison)
-*  [Important](#important)
 
 
 # Why zco?
@@ -30,29 +29,30 @@ __zco__ only work with callback,do less operation and has good performance among
 
 # Performance Battle
 
-    results for 20000 parallel executions, 1 ms per I/O op ,2017-03-19
+    results for 20000 parallel executions, 1 ms per I/O op ,2017-03-20
 
-    name                                                      timecost(ms)     memery(mb)
-    callback.js                                               116              30.30078125
-    async-neo@1.8.2.js                                        187              48.52734375
-    promise_bluebird@2.11.0.js                                713              93.58984375
-    co_zco_yyrdl@1.2.0.js                                     800              76.375
-    async_caolan@1.5.2.js                                     1100             122.515625
-    co_when_generator_cujojs@3.7.8.js                         1159             118.69921875
-    co_when_generator_cujojs_with_bluebird@3.7.8.js           1359             136.29296875
-    co_tj_with_bluebird_promise@4.6.0.js                      1386             125.58203125
-    promise_native.js                                         1451             171.72265625
-    async_await_es7_with_native_promise.js                    1526             170.234375
-    co_when_generator_cujojs_with_native_promise@3.7.8.js     1720             165.0703125
-    co_tj_with_native_promise@4.6.0.js                        1753             162.3203125
-    async_await_es7_with_bluebird_promise.js                  1891             197.7109375
-    co_coroutine_bluebird@2.11.0.js                           4446             244.984375
+    name                                                      timecost(ms)     memery(mb)       
+	callback.js                                               81               30.28125         
+	async-neo@1.8.2.js                                        139              48.16015625      
+	promise_bluebird@2.11.0.js                                349              59.38671875      
+	co_zco_yyrdl@1.2.0.js                                     550              81.33984375      
+	async_caolan@1.5.2.js                                     704              121.609375       
+	co_when_generator_cujojs@3.7.8.js                         719              115.7734375      
+	co_tj_with_bluebird_promise@4.6.0.js                      889              131.6953125      
+	co_when_generator_cujojs_with_bluebird@3.7.8.js           920              136.59375        
+	promise_native.js                                         959              178.76953125     
+	async_await_es7_with_native_promise.js                    988              168.39453125     
+	co_tj_with_native_promise@4.6.0.js                        1068             163.4375         
+	co_when_generator_cujojs_with_native_promise@3.7.8.js     1087             173.23046875     
+	async_await_es7_with_bluebird_promise.js                  1154             189.4453125      
+	co_coroutine_bluebird@2.11.0.js                           4251             255.34765625     
+
 
     Platform info:
     Windows_NT 10.0.14393 x64
     Node.JS 7.7.3
     V8 5.5.372.41
-    Intel(R) Core(TM) i5-3210M CPU @ 2.50GHz × 4
+    Intel(R) Core(TM) i5-5200U CPU @ 2.20GHz × 4
 
 # Useage
 
@@ -71,12 +71,18 @@ let async_func1=function(callback){
         callback(error,"hello world");
     },10)
 }
+let fake_async_func=function(callback){//support operation that is not an real-async action
+    callback(error,"hello world");
+}
 
 /*****************************simple use***************************/
 co(function *(next) {
     let [err,str]=yield async_func1(next);
     console.log(err);//undefined
     console.log(str);//"hello world"
+	let [err2,str2]=yield fake_async_func(next);
+	console.log(err2);//undefined
+    console.log(str2);//"hello world"
 })()
 
 /************************catch  error*********************************/
@@ -416,37 +422,9 @@ let getAllJsFileAsyncAwaitES7Version=async function (dirname) {
  })
 ```
 
-For these four coding-style, if in consideration of performance,I will chose callback ,if not I will chose zco,because it is more
+For these five coding-style, if in consideration of performance,I will chose callback ,if not I will chose zco,because it is more
 brief and has good performance.
 
-# Important!
-
-```javascript
-
-let real_async_func=function(a,b,callback){//the last arg must be callback ,important!
-    setTimeout(function(){
-        callback(a+b);
-    },10)
-}
-
-let sync_code=function(callback){
-    callback("hello world");
-}
-
-co(function*(next){
-    let [result]=yield real_async_func(1,2,next);
-    console.log(result);//3
-    let [str]=yield sync_code(next);//this code will make error,because it is not real-async operation,important!
-    console.log(str);
-})((err,d)=>{
-   if(err){
-       console.log(err.message);//"Generator is already running"
-   }else{
-       console.log(d);
-   }
-});
-
-```
 
 # License
 

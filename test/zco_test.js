@@ -71,7 +71,20 @@ describe("normal use",function(){
            expect(err).to.not.equal(undefined);
        })
    })
-
+   it("error should be throwed out if no handler instead of catching silently",function(){
+	   let error=null;
+	   try{
+		 co(function *(next) {
+           var a=yield sync_code_error(next);
+           return 10;
+         })();
+	   }catch(e){
+		   error=e;
+	   }finally{
+		   expect(error).to.not.equal(null);
+	   }
+   });
+   
    it("delivery return value",function(){
       co(function*(next){
          var [age]=yield people.say(next);
@@ -129,4 +142,23 @@ describe("throw error when not a generator function",function () {
          }
      })
 })
+
+var fake_async_func=function(a,b,callback){
+	callback(a+b);
+}
+
+describe("support fake async func",function(){
+	it("should not throw error",function(){
+		co(function*(next){
+			let [d]=yield fake_async_func(1,2,next);
+		})((err,data)=>{
+			expect(err).to.equal(undefined);
+			expect(data).to.equal(3);
+		});
+	})
+})
+
+ 
+
+
 
