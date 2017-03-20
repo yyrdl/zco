@@ -80,8 +80,8 @@ co(function *(next) {
     let [err,str]=yield async_func1(next);
     console.log(err);//undefined
     console.log(str);//"hello world"
-	let [err2,str2]=yield fake_async_func(next);
-	console.log(err2);//undefined
+    let [err2,str2]=yield fake_async_func(next);
+    console.log(err2);//undefined
     console.log(str2);//"hello world"
 })()
 
