@@ -72,7 +72,7 @@ let async_func1=function(callback){
     },10)
 }
 let fake_async_func=function(callback){//support operation that is not an real-async action
-    callback(error,"hello world");
+    callback(undefined,"hello world");
 }
 
 /*****************************simple use***************************/
