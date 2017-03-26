@@ -4,9 +4,9 @@
 
 # ZCO ![build status][test_status_url] [![Coverage Status][coverage_status_url]][coverage_page]
 
-Generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only callback,even if it is not a asynchronous operation.
+Generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but more brief and has better performance.
 
-Recommend version of node.js(or iojs)  which support the destructuring assignment syntax.
+Recommend versions of node.js(or iojs)  which support the destructuring assignment syntax.
 
 
 # Table Of Contents
@@ -20,12 +20,16 @@ Recommend version of node.js(or iojs)  which support the destructuring assignmen
 
 # Why zco?
 
-   The majority of operations in node.js(or webside) is based on callback,people convert callback-style-code to Promise-style-code(or other style)
-in order to making control-flow clearly.But it is not good enough,we want to writing sync-style-code,and we have created some modules
-that allow us writing sync-style-code.
-
-   Many other modules require a Promise  returned by expression after `yield`,it's not necessary if we just want a clear control-flow.
-__zco__ only work with callback,do less operation and has good performance among these coroutine modules(see performance statistics below).
+   Most of asynchronous operations in node.js are based on callback ,people convert callback-style-code to Promise-style-code
+ for a clear control-flow. And other coroutine modules do the same thing,but many of them require a Promise returned by the expression after `yield`.Promise is not necessary,and in order to use these coroutine module ,you have to do more to wrap callback api.
+ 
+   __zco__ is designed to work with callback seamlessly,do less operation,has better performance and a more brief code .Features of zco(some are special):
+   * __plural return value__   code like this `let [value1,value2,value3]=yield func(next)`
+   * __working with callback seamlessly__  no need to wrap
+   * __support fake asynchronous operation__  zco will check if it is real-async,this feature avoid error: "Generator is already running"
+   * __error catch__  different with Promise,if no handler is provided ,the error will be throwed out
+   * __zco nest__ 
+   
 
 # Performance Battle
 
@@ -118,7 +122,7 @@ co(function*(next){
     console.log(err);//undefined
     console.log(age);//100
 })
-/*************************co chain**************************************/
+/*************************co nest**************************************/
 
 let async_func2=function(a,b,c,callback){
     setTimeout(()=>{
@@ -423,7 +427,7 @@ let getAllJsFileAsyncAwaitES7Version=async function (dirname) {
 ```
 
 For these five coding-style, if in consideration of performance,I will chose callback ,if not I will chose zco,because it is more
-brief and has good performance.
+brief .
 
 
 # License
