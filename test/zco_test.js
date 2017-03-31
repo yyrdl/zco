@@ -158,6 +158,25 @@ describe("support fake async func",function(){
 	})
 })
 
+describe("defer",function(){
+	it("should run defer before return ",function(){
+		 let record=[];
+		 co(function*(next,defer){
+			defer(function(){
+				record.push(2);
+			}) 
+			let [d]=yield fake_async_func(1,2,next);
+			record.push(1);
+			return d;
+		 })((err,d)=>{
+			record.push(3);
+		    expect(err).to.equal(undefined);
+			expect(data).to.equal(3);
+			expect(record).to.equal(record);
+	     })
+	})
+})
+
  
 
 
