@@ -82,6 +82,26 @@ describe("normal use", function () {
 			}
 		}
 	});
+	
+	it("error should be throwed out if no handler instead of catching silently,throwed by defer", function (done) {
+		let error = undefined;
+		try {
+			co(function  * (next,defer) {
+				 defer(function*(){
+					 throw new Error();
+				 });
+			})();
+		} catch (e) {
+			error = e;
+		}
+		finally {
+			if (!error) {
+				done(new Error("err should not be undefined"))
+			} else {
+				done();
+			}
+		}
+	});
 
 	it("delivery return value", function (done) {
 		co(function  * (next) {
@@ -218,7 +238,7 @@ describe("defer", function () {
 	
 	it("the arg of the defer should be a generator function",function(done){
 		co(function  * (next, defer) {
-			defer(function  () {
+			defer(function() {
 				
 			});
 		})((err) => {

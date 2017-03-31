@@ -42,8 +42,7 @@ var co = function (gen) {
 	var defer = function (func) {
 		if (deferFunc != null) {
 				throw new Error("you can only defer once");
-		} 
-		if ("[object GeneratorFunction]" !== Object.prototype.toString.call(gen)) {
+		}else if ("[object GeneratorFunction]" !== Object.prototype.toString.call(gen)) {
 			throw new TypeError("the arg of refer must be a generator function");
 		}
 		deferFunc=co(func);	
