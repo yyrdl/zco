@@ -44,8 +44,9 @@ var co = function (gen) {
 				throw new Error("you can only defer once");
 		}else if ("[object GeneratorFunction]" !== Object.prototype.toString.call(func)) {
 			throw new TypeError("the arg of refer must be a generator function");
+		}else{
+			deferFunc=co(func);	
 		}
-		deferFunc=co(func);	
 	}
 	var next = function () {
 		var arg = slice.call(arguments);
