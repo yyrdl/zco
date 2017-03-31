@@ -24,6 +24,7 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
  for a clear control-flow. And other coroutine modules do the same thing,but many of them require a Promise returned by the expression after `yield`.Promise is not necessary,and in order to use these coroutine module ,you have to do more to wrap callback api.
  
    __zco__ is designed to work with callback seamlessly,do less operation,has better performance and a more brief code .Features of zco(some are special):
+   * __defer__ like in golang ,`defer` define an operation that will be executed before the coroutine exit.
    * __plural return value__   code like this `let [value1,value2,value3]=yield func(next)`
    * __working with callback seamlessly__  no need to wrap
    * __support fake asynchronous operation__  zco will check if it is real-async,this feature avoid error: "Generator is already running"
@@ -33,23 +34,24 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 
 # Performance Battle
 
-    results for 20000 parallel executions, 1 ms per I/O op ,2017-03-20
+    results for 20000 parallel executions, 1 ms per I/O op ,2017-03-31
 
     name                                                      timecost(ms)     memery(mb)       
-	callback.js                                               81               30.28125         
-	async-neo@1.8.2.js                                        139              48.16015625      
-	promise_bluebird@2.11.0.js                                349              59.38671875      
-	co_zco_yyrdl@1.2.0.js                                     550              81.33984375      
-	async_caolan@1.5.2.js                                     704              121.609375       
-	co_when_generator_cujojs@3.7.8.js                         719              115.7734375      
-	co_tj_with_bluebird_promise@4.6.0.js                      889              131.6953125      
-	co_when_generator_cujojs_with_bluebird@3.7.8.js           920              136.59375        
-	promise_native.js                                         959              178.76953125     
-	async_await_es7_with_native_promise.js                    988              168.39453125     
-	co_tj_with_native_promise@4.6.0.js                        1068             163.4375         
-	co_when_generator_cujojs_with_native_promise@3.7.8.js     1087             173.23046875     
-	async_await_es7_with_bluebird_promise.js                  1154             189.4453125      
-	co_coroutine_bluebird@2.11.0.js                           4251             255.34765625     
+    callback.js                                               84               30.515625        
+	async-neo@1.8.2.js                                        140              48.25390625      
+	promise_bluebird@2.11.0.js                                370              58.671875        
+	co_zco_yyrdl@1.2.2.js                                     528              81.83203125      
+	co_when_generator_cujojs@3.7.8.js                         717              116.00390625     
+	async_caolan@1.5.2.js                                     735              122.65625        
+	co_when_generator_cujojs_with_bluebird@3.7.8.js           939              138.41796875     
+	co_tj_with_bluebird_promise@4.6.0.js                      953              132.421875       
+	async_await_es7_with_native_promise.js                    985              167.125          
+	promise_native.js                                         989              177.8125         
+	co_tj_with_native_promise@4.6.0.js                        1086             162.85546875     
+	co_when_generator_cujojs_with_native_promise@3.7.8.js     1186             175.02734375     
+	async_await_es7_with_bluebird_promise.js                  1196             189.49609375     
+	co_coroutine_bluebird@2.11.0.js                           4411             255.7109375      
+    
 
 
     Platform info:
@@ -88,6 +90,29 @@ co(function *(next) {
     console.log(err2);//undefined
     console.log(str2);//"hello world"
 })()
+
+/*************************defer *******************************/
+//define a resource ,that should be released after use;
+let resource={
+   "referenceCount":0,
+   "release":function(){
+     this.referenceCount-=1;
+   }
+}
+
+let getResource=function(){
+   resource.referenceCount+=1;
+   return resource;
+}
+
+co(function*(next,defer){
+    let resour=null;
+    defer(function*(inner_next){//the arg of defer must be a generator function
+	  resour&&resour.release();//we should release the resource after use
+	});
+	resour=getResource();
+	//..........
+})();
 
 /************************catch  error*********************************/
 
