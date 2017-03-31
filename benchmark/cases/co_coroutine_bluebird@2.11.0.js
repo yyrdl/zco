@@ -42,8 +42,6 @@ let getArticle=function(arti){
     });
 }
 
-
-
 let updateAge=function(age){
     return new Promise((resolve,reject)=>{
         actions.updateAge(age,function(err){
