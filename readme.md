@@ -4,9 +4,9 @@
 
 # ZCO ![build status][test_status_url] [![Coverage Status][coverage_status_url]][coverage_page]
 
-Generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but work with no Promise, only callback.
+Generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but more brief and has better performance.
 
-Recommend version of node.js(or iojs)  which support the destructuring assignment syntax.
+Recommend versions of node.js(or iojs)  which support the destructuring assignment syntax.
 
 
 # Table Of Contents
@@ -16,43 +16,49 @@ Recommend version of node.js(or iojs)  which support the destructuring assignmen
 *  [Useage](#useage)
 *  [Example](#example)
 *  [Compare with tj's co,Promise, callback,and ES7 "async/await" when do samething](#comparison)
-*  [Important](#important)
 
 
 # Why zco?
 
-   The majority of operations in node.js(or webside) is based on callback,people convert callback-style-code to Promise-style-code(or other style)
-in order to making control-flow clearly.But it is not good enough,we want to writing sync-style-code,and we have created some modules
-that allow us writing sync-style-code.
-
-   Many other modules require a Promise  returned by expression after `yield`,it's not necessary if we just want a clear control-flow.
-__zco__ only work with callback,do less operation and has good performance among these coroutine modules(see performance statistics below).
+   Most of asynchronous operations in node.js are based on callback ,people convert callback-style-code to Promise-style-code
+ for a clear control-flow. And other coroutine modules do the same thing,but many of them require a Promise returned by the expression after `yield`.Promise is not necessary,and in order to use these coroutine module ,you have to do more to wrap callback api.
+ 
+   __zco__ is designed to work with callback seamlessly,do less operation,has better performance and a more brief code .Features of zco(some are special):
+   * __defer__ like in golang ,`defer` define an operation that will be executed before the coroutine exit.
+   * __plural return value__   code like this `let [value1,value2,value3]=yield func(next)`
+   * __working with callback seamlessly__  no need to wrap
+   * __support fake asynchronous operation__  zco will check if it is real-async,this feature avoid error: "Generator is already running"
+   * __error catch__  different with Promise,if no handler is provided ,the error will be throwed out
+   * __zco nest__ 
+   
 
 # Performance Battle
 
-    results for 20000 parallel executions, 1 ms per I/O op ,2017-03-19
+    results for 20000 parallel executions, 1 ms per I/O op ,2017-03-31
 
-    name                                                      timecost(ms)     memery(mb)
-    callback.js                                               116              30.30078125
-    async-neo@1.8.2.js                                        187              48.52734375
-    promise_bluebird@2.11.0.js                                713              93.58984375
-    co_zco_yyrdl@1.2.0.js                                     800              76.375
-    async_caolan@1.5.2.js                                     1100             122.515625
-    co_when_generator_cujojs@3.7.8.js                         1159             118.69921875
-    co_when_generator_cujojs_with_bluebird@3.7.8.js           1359             136.29296875
-    co_tj_with_bluebird_promise@4.6.0.js                      1386             125.58203125
-    promise_native.js                                         1451             171.72265625
-    async_await_es7_with_native_promise.js                    1526             170.234375
-    co_when_generator_cujojs_with_native_promise@3.7.8.js     1720             165.0703125
-    co_tj_with_native_promise@4.6.0.js                        1753             162.3203125
-    async_await_es7_with_bluebird_promise.js                  1891             197.7109375
-    co_coroutine_bluebird@2.11.0.js                           4446             244.984375
+    name                                                      timecost(ms)     memery(mb)       
+    callback.js                                               84               30.515625        
+	async-neo@1.8.2.js                                        140              48.25390625      
+	promise_bluebird@2.11.0.js                                370              58.671875        
+	co_zco_yyrdl@1.2.2.js                                     528              81.83203125      
+	co_when_generator_cujojs@3.7.8.js                         717              116.00390625     
+	async_caolan@1.5.2.js                                     735              122.65625        
+	co_when_generator_cujojs_with_bluebird@3.7.8.js           939              138.41796875     
+	co_tj_with_bluebird_promise@4.6.0.js                      953              132.421875       
+	async_await_es7_with_native_promise.js                    985              167.125          
+	promise_native.js                                         989              177.8125         
+	co_tj_with_native_promise@4.6.0.js                        1086             162.85546875     
+	co_when_generator_cujojs_with_native_promise@3.7.8.js     1186             175.02734375     
+	async_await_es7_with_bluebird_promise.js                  1196             189.49609375     
+	co_coroutine_bluebird@2.11.0.js                           4411             255.7109375      
+    
+
 
     Platform info:
     Windows_NT 10.0.14393 x64
     Node.JS 7.7.3
     V8 5.5.372.41
-    Intel(R) Core(TM) i5-3210M CPU @ 2.50GHz × 4
+    Intel(R) Core(TM) i5-5200U CPU @ 2.20GHz × 4
 
 # Useage
 
@@ -71,13 +77,42 @@ let async_func1=function(callback){
         callback(error,"hello world");
     },10)
 }
+let fake_async_func=function(callback){//support operation that is not an real-async action
+    callback(undefined,"hello world");
+}
 
 /*****************************simple use***************************/
 co(function *(next) {
     let [err,str]=yield async_func1(next);
     console.log(err);//undefined
     console.log(str);//"hello world"
+    let [err2,str2]=yield fake_async_func(next);
+    console.log(err2);//undefined
+    console.log(str2);//"hello world"
 })()
+
+/*************************defer *******************************/
+//define a resource ,that should be released after use;
+let resource={
+   "referenceCount":0,
+   "release":function(){
+     this.referenceCount-=1;
+   }
+}
+
+let getResource=function(){
+   resource.referenceCount+=1;
+   return resource;
+}
+
+co(function*(next,defer){
+    let resour=null;
+    defer(function*(inner_next){//the arg of defer must be a generator function
+	  resour&&resour.release();//we should release the resource after use
+	});
+	resour=getResource();
+	//..........
+})();
 
 /************************catch  error*********************************/
 
@@ -112,7 +147,7 @@ co(function*(next){
     console.log(err);//undefined
     console.log(age);//100
 })
-/*************************co chain**************************************/
+/*************************co nest**************************************/
 
 let async_func2=function(a,b,c,callback){
     setTimeout(()=>{
@@ -416,37 +451,9 @@ let getAllJsFileAsyncAwaitES7Version=async function (dirname) {
  })
 ```
 
-For these four coding-style, if in consideration of performance,I will chose callback ,if not I will chose zco,because it is more
-brief and has good performance.
+For these five coding-style, if in consideration of performance,I will chose callback ,if not I will chose zco,because it is more
+brief .
 
-# Important!
-
-```javascript
-
-let real_async_func=function(a,b,callback){//the last arg must be callback ,important!
-    setTimeout(function(){
-        callback(a+b);
-    },10)
-}
-
-let sync_code=function(callback){
-    callback("hello world");
-}
-
-co(function*(next){
-    let [result]=yield real_async_func(1,2,next);
-    console.log(result);//3
-    let [str]=yield sync_code(next);//this code will make error,because it is not real-async operation,important!
-    console.log(str);
-})((err,d)=>{
-   if(err){
-       console.log(err.message);//"Generator is already running"
-   }else{
-       console.log(d);
-   }
-});
-
-```
 
 # License
 
