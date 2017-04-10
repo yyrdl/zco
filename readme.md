@@ -32,7 +32,7 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
    Most of asynchronous operations in node.js are based on callback ,people convert callback-style-code to Promise-style-code
  for a clear control-flow. And other coroutine modules do the same thing,but many of them require a Promise returned by the expression after `yield`.Promise is not necessary,and in order to use these coroutine module ,you have to do more to wrap callback api.
 
-   __zco__被设计成可以和回调风格的API无缝使用，无需额外包装回调，同时也兼容 Promise,性能更好，代码更简洁。
+   zco 被设计成可以和回调风格的API无缝使用，无需额外包装回调，同时也兼容 Promise,性能更好，代码更简洁。
 
 
    __zco__ is designed to work with callback seamlessly,do less operation,has better performance and a more brief code .Features of zco(some are special):
@@ -81,7 +81,7 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 
 # Example
 
-### simple useage
+### Simple Useage
 
 ```javascript
 
@@ -111,7 +111,7 @@ co(function *(next) {
 
 ```
 
-### defer
+### Defer
 
 `defer` 定义一个在当前co退出前一定会执行的操作，无论defer之后的代码是否报错。该功能可用来做一些清理工作。
 
@@ -144,7 +144,7 @@ co(function*(next,defer){
 
 ```
 
-### catch error
+### Catch Error
 
 错误捕捉
 
@@ -164,7 +164,7 @@ co(function *(next) {
 
 ```
 
-### delivery return-value
+### Delivery Return-value
 
 传递返回值
 
@@ -190,7 +190,7 @@ co(function*(next){
 
 ```
 
-### zco nest
+### Zco Nest
 
 zco 嵌套
 
@@ -231,7 +231,7 @@ co(function*(next){
 
 ```
 
-### zco.all
+### Zco.all
 
 execute operations concurrently
 
@@ -273,7 +273,7 @@ co(function*(next){
 })()
 
 ```
-### when Promise
+### When Promise
 
 even if not recommend Promise ,sometimes we can't bypass.
 
