@@ -25,8 +25,8 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 
 # Why zco?
 
-   node.js 里面几乎所有的异步操作是回调的方式，比如文件模块（fs），人们在回调上包装一层变成Promise为了使代码结构清晰，但这是不必要的。
- 其他的主流coroutine模块基本都要求yield之后的表达式返回一个Promise，开发Promise是为了清晰的代码，避免回调嵌套，coroutine模块也是同样的
+   node.js 里面几乎所有的异步操作是回调的方式，比如文件模块（fs），为了使代码结构清晰,人们把回调包装成Promise，但这是不必要的。
+ 主流coroutine模块基本都要求yield之后的表达式返回一个Promise，开发Promise是为了清晰的代码，避免回调嵌套，coroutine模块也是同样的
  目的，那为什么还要依赖Promise呢！
 
    Most of asynchronous operations in node.js are based on callback ,people convert callback-style-code to Promise-style-code
