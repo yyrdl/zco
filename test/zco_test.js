@@ -82,14 +82,14 @@ describe("normal use", function () {
 			}
 		}
 	});
-	
+
 	it("error should be throwed out if no handler instead of catching silently,throwed by defer", function (done) {
 		let error = undefined;
 		try {
-			co(function  * (next,defer) {
-				 defer(function*(){
-					 throw new Error();
-				 });
+			co(function  * (next, defer) {
+				defer(function  * () {
+					throw new Error();
+				});
 			})();
 		} catch (e) {
 			error = e;
@@ -201,8 +201,8 @@ describe("defer", function () {
 
 		co(function  * (next, defer) {
 			defer(function  * () {
-					record.push(2);
-				});
+				record.push(2);
+			});
 			let[d] = yield fake_async_func(1, 2, next);
 			record.push(1);
 			return d;
@@ -224,7 +224,7 @@ describe("defer", function () {
 
 		co(function  * (next, defer) {
 			defer(function  * () {
-					throw new Error("error in defer")
+				throw new Error("error in defer")
 			});
 		})((err) => {
 			if (!err || err.message != "error in defer") {
@@ -235,12 +235,10 @@ describe("defer", function () {
 		})
 
 	})
-	
-	it("the arg of the defer should be a generator function",function(done){
+
+	it("the arg of the defer should be a generator function", function (done) {
 		co(function  * (next, defer) {
-			defer(function() {
-				
-			});
+			defer(function () {});
 		})((err) => {
 			if (!err) {
 				done(new Error("should throw error if the arg of defer is not a generator function"));
@@ -249,15 +247,11 @@ describe("defer", function () {
 			}
 		})
 	})
-	
-	it("I can only defer once",function(done){
+
+	it("I can only defer once", function (done) {
 		co(function  * (next, defer) {
-			defer(function * () {
-				
-			});
-			defer(function * () {
-				
-			});
+			defer(function  * () {});
+			defer(function  * () {});
 		})((err) => {
 			if (!err) {
 				done(new Error("I can only defer once"));
@@ -266,5 +260,141 @@ describe("defer", function () {
 			}
 		})
 	})
-	
+})
+
+describe("no need next when return co", function () {
+	it("no need next", function (done) {
+		co(function  * (next, defer) {
+			let[err, data] = yield co_func1(1, 2, 3);
+			if (err) {
+				done(err);
+			}
+			if (data != 6) {
+				done(new Error("data should be 6"));
+			}
+
+		})((err) => {
+			if (err) {
+				done(err);
+			} else {
+				done();
+			}
+		})
+	})
+})
+describe("co.all", function () {
+
+	it("all :co func", function (done) {
+		co(function  * (next, defer) {
+			let[err, result] = yield co.all(co_func1(1, 2, 3), co_func2(3, 4, 5));
+			if (err) {
+				done(err);
+			} else if (result[0] != 6 || result[1] != 12) {
+				done(new Error("wrong result"));
+			} else {
+				done();
+			}
+		})()
+	})
+
+	it("all :generic func", function (done) {
+		co(function  * (next, defer) {
+			let[err, data] = yield co.all(function (cb) {
+					cb(100);
+				});
+			if (err) {
+				done(err);
+			} else if (data[0] != 100) {
+				done(new Error("wrong number"))
+			} else {
+				done();
+			}
+		})()
+	})
+
+	it("all :generic func error", function (done) {
+		co(function  * (next, defer) {
+			let[err, data] = yield co.all(function (cb) {
+					throw new Error("manual error");
+					cb(100);
+				});
+			if (!err) {
+				done(new Error("error should be caught!"));
+			} else {
+				done();
+			}
+		})()
+	})
+	var co_error_func = function () {
+		return co(function  * (next) {
+			throw new Error("error");
+		})
+	}
+
+	it("all :catch error occurred in co", function (done) {
+		co(function  * (next) {
+			let[err] = yield co.all(co_error_func(), co_func1(1, 2, 3), "null");
+			if (!err) {
+				done(new Error("error should be caught"));
+			} else {
+				done();
+			}
+		})()
+	})
+
+	it("all :timeout", function (done) {
+		co(function  * (next) {
+			let[err] = yield co.all(function (cb) {
+					setTimeout(cb, 1000);
+				}, 10);
+			if (!err || err.message != "timeout") {
+				done(new Error("should timeout"));
+			} else {
+				done();
+			}
+		})()
+	})
+
+	it("all :not timeout", function (done) {
+		co(function  * (next) {
+			let[err] = yield co.all(function (cb) {
+					setTimeout(cb, 10);
+				}, 100);
+			if (err) {
+				done(err);
+			} else {
+				done();
+			}
+		})()
+	})
+
+	it("all :no action", function (done) {
+		co(function  * (next) {
+			let[err, data] = yield co.all();
+			if (err) {
+				done(err);
+			} else if (data != undefined) {
+				done(new Error("data should be undefined"))
+			} else {
+				done();
+			}
+		})()
+	})
+
+	it("all :should error when no callback privided", function (done) {
+		var error = null
+			try {
+				co.all()();
+			} catch (e) {
+				error = e;
+			}
+			finally {
+				if (error == null) {
+					done(new Error("should throw error"))
+				} else {
+					done();
+				}
+			}
+	})
+
 })
