@@ -35,23 +35,23 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 
 # Performance Battle
 
-    results for 20000 parallel executions, 1 ms per I/O op ,2017-03-31
+    results for 20000 parallel executions, 1 ms per I/O op ,2017-04-10
 
     name                                                      timecost(ms)     memery(mb)       
-    callback.js                                               84               30.515625        
-	async-neo@1.8.2.js                                        140              48.25390625      
-	promise_bluebird@2.11.0.js                                370              58.671875        
-	co_zco_yyrdl@1.2.2.js                                     528              81.83203125      
-	co_when_generator_cujojs@3.7.8.js                         717              116.00390625     
-	async_caolan@1.5.2.js                                     735              122.65625        
-	co_when_generator_cujojs_with_bluebird@3.7.8.js           939              138.41796875     
-	co_tj_with_bluebird_promise@4.6.0.js                      953              132.421875       
-	async_await_es7_with_native_promise.js                    985              167.125          
-	promise_native.js                                         989              177.8125         
-	co_tj_with_native_promise@4.6.0.js                        1086             162.85546875     
-	co_when_generator_cujojs_with_native_promise@3.7.8.js     1186             175.02734375     
-	async_await_es7_with_bluebird_promise.js                  1196             189.49609375     
-	co_coroutine_bluebird@2.11.0.js                           4411             255.7109375      
+    callback.js                                               101              30.67578125
+    async-neo@1.8.2.js                                        157              48.5703125
+    promise_bluebird@2.11.0.js                                656              92.6328125
+    co_zco_yyrdl@1.2.2.js                                     823              78.14453125
+    async_caolan@1.5.2.js                                     1029             122.71484375
+    co_when_generator_cujojs@3.7.8.js                         1063             117.79296875
+    co_when_generator_cujojs_with_bluebird@3.7.8.js           1214             127.36328125
+    co_tj_with_bluebird_promise@4.6.0.js                      1266             125.328125
+    async_await_es7_with_native_promise.js                    1313             161.0859375
+    promise_native.js                                         1327             178.01171875
+    co_when_generator_cujojs_with_native_promise@3.7.8.js     1609             170.6953125
+    co_tj_with_native_promise@4.6.0.js                        1640             163.78515625
+    async_await_es7_with_bluebird_promise.js                  1684             197.69140625
+    co_coroutine_bluebird@2.11.0.js                           4027             242.3828125
     
 
 
@@ -59,7 +59,7 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
     Windows_NT 10.0.14393 x64
     Node.JS 7.7.3
     V8 5.5.372.41
-    Intel(R) Core(TM) i5-5200U CPU @ 2.20GHz × 4
+    Intel(R) Core(TM) i5-3210U CPU @ 2.50GHz × 4
 
 # Useage
 
@@ -87,6 +87,7 @@ co(function *(next) {
     let [err,str]=yield async_func1(next);
     console.log(err);//undefined
     console.log(str);//"hello world"
+
     let [err2,str2]=yield fake_async_func(next);
     console.log(err2);//undefined
     console.log(str2);//"hello world"
@@ -168,7 +169,7 @@ let co_func2=function(a,b,c){
 
         let [err,data]=yield co_func1(a,b,c);
 
-        //or "let [err,data]=yield co_func1(a,b,c)(next)", this is ok
+        //or "let [err,data]=yield co_func1(a,b,c)(next)", this  is also ok.
 
         return data;
     })

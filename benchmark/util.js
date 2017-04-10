@@ -7,7 +7,8 @@ var co=require("../index");
 
 
 exports.fileList=function(dir,cb){
-    co(function*(next){
+
+     co(function*(next){
         var files=[];
         var [err,list]=yield fs.readdir(dir,next);
         if(err){

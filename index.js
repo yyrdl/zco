@@ -109,10 +109,7 @@ var all = function () {
         }
         if (!hasReturn) {
             hasReturn = true;
-            cb && cb(err, result);
-            if(!cb&&err){
-                throw err;
-            }
+            cb(err, result);
         }
     }
 
