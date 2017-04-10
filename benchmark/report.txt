@@ -1,15 +1,15 @@
 name                                                      timecost(ms)     memery(mb)       
-callback.js                                               101              30.67578125      
- async-neo@1.8.2.js                                       157              48.5703125       
-promise_bluebird@2.11.0.js                                656              92.6328125       
-co_zco_yyrdl@1.2.2.js                                     823              78.14453125      
-async_caolan@1.5.2.js                                     1029             122.71484375     
-co_when_generator_cujojs@3.7.8.js                         1063             117.79296875     
-co_when_generator_cujojs_with_bluebird@3.7.8.js           1214             127.36328125     
-co_tj_with_bluebird_promise@4.6.0.js                      1266             125.328125       
-async_await_es7_with_native_promise.js                    1313             161.0859375      
-promise_native.js                                         1327             178.01171875     
-co_when_generator_cujojs_with_native_promise@3.7.8.js     1609             170.6953125      
-co_tj_with_native_promise@4.6.0.js                        1640             163.78515625     
-async_await_es7_with_bluebird_promise.js                  1684             197.69140625     
-co_coroutine_bluebird@2.11.0.js                           4027             242.3828125      
+callback.js                                               94               31.0625          
+ async-neo@1.8.2.js                                       172              48.58984375      
+promise_bluebird@2.11.0.js                                672              85.77734375      
+co_zco_yyrdl@1.2.3.js                                     850              78.1640625       
+async_caolan@1.5.2.js                                     1067             122.47265625     
+co_when_generator_cujojs@3.7.8.js                         1077             116.765625       
+co_when_generator_cujojs_with_bluebird@3.7.8.js           1312             131.68359375     
+co_tj_with_bluebird_promise@4.6.0.js                      1313             125.4453125      
+async_await_es7_with_native_promise.js                    1373             160.55859375     
+promise_native.js                                         1388             177.76171875     
+co_tj_with_native_promise@4.6.0.js                        1653             162.546875       
+co_when_generator_cujojs_with_native_promise@3.7.8.js     1705             169.24609375     
+async_await_es7_with_bluebird_promise.js                  1780             198.07421875     
+co_coroutine_bluebird@2.11.0.js                           4146             242.49609375     

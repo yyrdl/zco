@@ -398,3 +398,41 @@ describe("co.all", function () {
 	})
 
 })
+
+describe("yield Promise",function () {
+	var promise_api=function () {
+		return Promise.resolve().then(function(){
+			return 6;
+		});
+	}
+	it("should support promise",function (done) {
+		co(function*(next){
+			let [err,data]=yield promise_api();
+			if(err){
+				done(err);
+			}else if(data!=6){
+				done(new Error("wrong data"));
+			}else{
+				done();
+			}
+		})()
+	})
+
+	var promise_api_error=function(){
+		return Promise.resolve().then(function(){
+			throw new Error();
+		})
+	}
+	
+	it("should catch error throwed by Promise",function (done) {
+		co(function*(next){
+			let [err]=yield promise_api_error();
+			if(!err){
+				done(new Error());
+			}else{
+				done();
+			}
+		})()
+	})
+
+})

@@ -15,7 +15,7 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 *  [Performance Battle](#performance-battle)
 *  [Useage](#useage)
 *  [Example](#example)
-*  [Compare with tj's co,Promise, callback,and ES7 "async/await" when do samething](#comparison)
+*  [Compare with tj's co,Promise, callback,and ES7 "async/await" when do samething](https://github.com/yyrdl/zco/blob/master/readmes/compare.md)
 
 
 # Why zco?
@@ -31,6 +31,7 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
    * __error catch__  different with Promise,if no handler is provided ,the error will be throwed out
    * __zco nest__ 
    * __zco.all__
+   * __yield Promise__  not recommend,but also support
    
 
 # Performance Battle
@@ -38,20 +39,20 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
     results for 20000 parallel executions, 1 ms per I/O op ,2017-04-10
 
     name                                                      timecost(ms)     memery(mb)       
-    callback.js                                               101              30.67578125
-    async-neo@1.8.2.js                                        157              48.5703125
-    promise_bluebird@2.11.0.js                                656              92.6328125
-    co_zco_yyrdl@1.2.2.js                                     823              78.14453125
-    async_caolan@1.5.2.js                                     1029             122.71484375
-    co_when_generator_cujojs@3.7.8.js                         1063             117.79296875
-    co_when_generator_cujojs_with_bluebird@3.7.8.js           1214             127.36328125
-    co_tj_with_bluebird_promise@4.6.0.js                      1266             125.328125
-    async_await_es7_with_native_promise.js                    1313             161.0859375
-    promise_native.js                                         1327             178.01171875
-    co_when_generator_cujojs_with_native_promise@3.7.8.js     1609             170.6953125
-    co_tj_with_native_promise@4.6.0.js                        1640             163.78515625
-    async_await_es7_with_bluebird_promise.js                  1684             197.69140625
-    co_coroutine_bluebird@2.11.0.js                           4027             242.3828125
+    callback.js                                               94               31.0625
+    async-neo@1.8.2.js                                        172              48.58984375
+    promise_bluebird@2.11.0.js                                672              85.77734375
+    co_zco_yyrdl@1.2.3.js                                     850              78.1640625
+    async_caolan@1.5.2.js                                     1067             122.47265625
+    co_when_generator_cujojs@3.7.8.js                         1077             116.765625
+    co_when_generator_cujojs_with_bluebird@3.7.8.js           1312             131.68359375
+    co_tj_with_bluebird_promise@4.6.0.js                      1313             125.4453125
+    async_await_es7_with_native_promise.js                    1373             160.55859375
+    promise_native.js                                         1388             177.76171875
+    co_tj_with_native_promise@4.6.0.js                        1653             162.546875
+    co_when_generator_cujojs_with_native_promise@3.7.8.js     1705             169.24609375
+    async_await_es7_with_bluebird_promise.js                  1780             198.07421875
+    co_coroutine_bluebird@2.11.0.js                           4146             242.49609375
     
 
 
@@ -85,11 +86,11 @@ let fake_async_func=function(callback){//support operation that is not an real-a
 /*****************************simple use***************************/
 co(function *(next) {
     let [err,str]=yield async_func1(next);
-    console.log(err);//undefined
+    console.log(err);//null
     console.log(str);//"hello world"
 
     let [err2,str2]=yield fake_async_func(next);
-    console.log(err2);//undefined
+    console.log(err2);//null
     console.log(str2);//"hello world"
 })()
 
@@ -146,7 +147,7 @@ co(function*(next){
     var [age]=yield people.say(next);
     return age;
 })((err,age)=>{
-    console.log(err);//undefined
+    console.log(err);//null
     console.log(age);//100
 })
 /*************************co nest**************************************/
@@ -177,10 +178,10 @@ let co_func2=function(a,b,c){
 
 co(function*(next){
     let [err,d]=yield co_func2(1,2,3);
-    console.log(err);//undefined
+    console.log(err);//null
     return d;
 })((err,d)=>{
-    console.log(err);//undefined
+    console.log(err);//null
     console.log(d);//6
 })
 
@@ -221,282 +222,26 @@ co(function*(next){
    console.log(result)//[6,15,[100]]
 })()
 
+/***********************when there are Promise***********************************/
 
-```
-# Comparison
-
- Suppose we need to get  javascript file list in directory "./cases",let's write code to do it.
-
-* [zco](#zco-style)
-* [Tj's co](#tj-co-style)
-* [Promise](#promise-style)
-* [Callback](#callback-style)
-* [ES7 Async/Await](#es7-asyncawait)
+// even if not recommend Promise ,sometimes we can't bypass.
 
 
-###  zco style
-
-```javascript
-  const zco=require("zco");
-  const fs=require("fs");
-  const testDirectory="./cases";
-
-  let getAllJsFileZCOVersion=function(dirname){
-      return zco(function*(next){
-          let files=[];
-          let [err,list]=yield fs.readdir(dirname,next);//get files list
-          if(err){
-             throw err;
-          }
-          for(var i=0;i<list.length;i++){
-              var [er,stat]=yield fs.stat(dirname+"/"+list[i],next);
-              if(er){
-                 throw er;
-              }else if(stat.isFile()&&list[i].endsWith(".js")){//judge if it is js file
-                  files.push(list[i]);
-              }
-          }
-          return files;
-      });
-  }
-
-  //then use it
-
-  getAllJsFileZCOVersion(testDirectory)((err,jsFiles)=>{
-       if(err){
-           console.log(err.message);
-       }else{
-           console.log(jsFiles);
-       }
+let promise_api=function(a,b){
+  return Promise.resolve().then(function(){
+     return a+b;
   });
+}
 
+co(function*(next){
+   let [err,data]=yield promise_api(1,2);
+   console.log(err);//null
+   console.log(data)://3;
+})()
 
 ```
 
-# Tj co style
 
-Similar useage with bluebird.coroutine and when/generator.
-
-```javascript
- const co=require("co");
- const Promise=require("bluebird");
- const fs=require("fs");
-
- const testDirectory="./cases";
-
- //we need to convert callback to Promise
- let readdir=function(dirname){
-     return new Promise((resolve,reject)=>{
-         fs.readdir(dirname,(err,list)=>{
-            if(err){
-                reject(err);
-            }else{
-                resolve(list);
-            }
-         })
-     })
- }
- let stat=function(file){
-     return new Promise((resolve,reject)=>{
-         fs.stat(file,(err,stats)=>{
-             if(err){
-                 reject(err);
-             }else{
-                 resolve(stats);
-             }
-         })
-     });
- }
-
- let getAllJsFileTJCOVersion=function(dirname){
-    return co(function*(){
-        let list=yield readdir(dirname);
-        let files=[];
-        for(let i=0;i<list.length;i++){
-            let stats=yield stat(dirname+"/"+list[i]);
-            if(stats.isFile()&&list[i].endsWith(".js")){
-                files.push(list[i]);
-            }
-        }
-        return files;
-    });
-}
-
-//then use it
-
- getAllJsFileTJCOVersion(testDirectory).then((files)=>{
-    console.log(files);
- }).catch((err)=>{
-    console.log(err);
- })
-```
-
-### Promise style
-
-```javascript
- const Promise=require("bluebird");
- const fs=require("fs");
-
- const testDirectory="./cases";
-
- //we need to convert callback to Promise
- let readdir=function(dirname){
-     return new Promise((resolve,reject)=>{
-         fs.readdir(dirname,(err,list)=>{
-            if(err){
-                reject(err);
-            }else{
-                resolve(list);
-            }
-         })
-     })
- }
- let stat=function(file){
-     return new Promise((resolve,reject)=>{
-         fs.stat(file,(err,stats)=>{
-             if(err){
-                 reject(err);
-             }else{
-                 resolve(stats);
-             }
-         })
-     });
- }
- let getAllJsFilePurePromiseVersion=function (dirname) {
-     return readdir(dirname).then((list)=>{
-         let pros=[];
-         for(let i=0;i<list.length;i++){
-             pros.push(stat(dirname+"/"+list[i]));
-         }
-         return Promise.all(pros).then((statsList)=>{
-             let files=[];
-             for(let i=0;i<statsList.length;i++){
-                 if(statsList[i].isFile()&&list[i].endsWith(".js")){
-                     files.push(list[i]);
-                 }
-             }
-             return files;
-         });
-     });
- }
- //then use it
-
- getAllJsFilePurePromiseVersion(testDirectory).then((files)=>{
-     console.log(files);
- }).catch((err)=>{
-     console.log(err);
- })
-```
-
-### Callback style
-
-Callback is basic useage in node.js ,and has best performance!
-
-```javascript
-
-const fs=require("fs");
-
-const testDirectory="./cases";
-
-let getAllJsFilePureCallbackVersion=function(dirname,callback){
-    let index=0,list=[],files=[];
-    let alreadyReturn=false;
-    let _end=function (err) {
-        if(!alreadyReturn){
-            alreadyReturn=true;
-            err?callback(err):callback(undefined,files);
-        }
-    }
-    let checkDone=function () {
-        if(index===list.length){
-            _end();
-        }
-    }
-    let jsFile=function () {
-        for(let i=0;i<list.length;i++){
-            ((j)=>{
-                fs.stat(dirname+"/"+list[j],(err,stats)=>{
-                    if(err){
-                        _end(err);
-                    }else if(stats.isFile()&&list[j].endsWith(".js")){
-                        files.push(list[j]);
-                        index++;
-                        checkDone();
-                    }
-                })
-            })(i)
-        }
-    }
-    fs.readdir(dirname,(err,_list)=>{
-        if(err){
-           _end(err);
-        }else{
-           list=_list;
-            jsFile();
-        }
-    });
-}
-
-//then use it
-
-getAllJsFilePureCallbackVersion(testDirectory,(err,files)=>{
-    if(err){
-        console.log(err);
-    }else{
-        console.log(files);
-    }
-})
-```
-
-###  ES7 Async/Await
-
-```javascript
-const fs=require("fs");
-const testDirectory="./cases";
-
-let readdir=function(dirname){
-    return new Promise((resolve,reject)=>{
-        fs.readdir(dirname,(err,list)=>{
-           if(err){
-               reject(err);
-           }else{
-               resolve(list);
-           }
-        })
-    })
-}
-let stat=function(file){
-    return new Promise((resolve,reject)=>{
-        fs.stat(file,(err,stats)=>{
-            if(err){
-                reject(err);
-            }else{
-                resolve(stats);
-            }
-        })
-    });
-}
-let getAllJsFileAsyncAwaitES7Version=async function (dirname) {
-       let list=await  readdir(dirname);
-       let files=[];
-       for(let i=0;i<list.length;i++){
-           let stats=await stat(dirname+"/"+list[i]);
-           if(stats.isFile()&&list[i].endsWith(".js")){
-               files.push(list[i]);
-           }
-       }
-       return files;
-}
-
- getAllJsFileAsyncAwaitES7Version(testDirectory).then((files)=>{
-     console.log(files);
- }).catch((err)=>{
-     console.log(err);
- })
-```
-
-For these five coding-style, if in consideration of performance,I will chose callback ,if not I will chose zco,because it is more
-brief .
 
 
 # License
