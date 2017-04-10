@@ -30,6 +30,7 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
    * __support fake asynchronous operation__  zco will check if it is real-async,this feature avoid error: "Generator is already running"
    * __error catch__  different with Promise,if no handler is provided ,the error will be throwed out
    * __zco nest__ 
+   * __zco.all__
    
 
 # Performance Battle
@@ -94,21 +95,21 @@ co(function *(next) {
 /*************************defer *******************************/
 //define a resource ,that should be released after use;
 let resource={
-   "referenceCount":0,
-   "release":function(){
-     this.referenceCount-=1;
-   }
+   "referenceCount":0
 }
 
 let getResource=function(){
    resource.referenceCount+=1;
    return resource;
 }
+let releseResource=function(resour){
+    resour&&(resour.referenceCount--);
+}
 
 co(function*(next,defer){
     let resour=null;
     defer(function*(inner_next){//the arg of defer must be a generator function
-	  resour&&resour.release();//we should release the resource after use
+	  releseResource(resour);//we should release the resource after use
 	});
 	resour=getResource();
 	//..........
@@ -164,19 +165,61 @@ let co_func1=function(a,b,c){
 
 let co_func2=function(a,b,c){
     return co(function*(next){
-        let [err,data]=yield co_func1(a,b,c)(next);
+
+        let [err,data]=yield co_func1(a,b,c);
+
+        //or "let [err,data]=yield co_func1(a,b,c)(next)", this is ok
+
         return data;
     })
 }
 
 co(function*(next){
-    let [err,d]=yield co_func2(1,2,3)(next);
+    let [err,d]=yield co_func2(1,2,3);
     console.log(err);//undefined
     return d;
 })((err,d)=>{
     console.log(err);//undefined
     console.log(d);//6
 })
+
+
+/**********************************co all************************************/
+
+
+let async_func2=function(a,b,c,callback){
+    setTimeout(()=>{
+        callback(a+b+c);
+    },10)
+}
+
+let co_func1=function(a,b,c){
+    return co(function *(next) {
+        let [d]=yield async_func2(a,b,c,next);
+        return d;
+    })
+}
+
+
+let co_func2=function(a,b,c){
+    return co(function *(next) {
+        let [d]=yield async_func2(a,b,c,next);
+        return d;
+    })
+}
+
+let generic_callback=function(callback){//the first arg must be callback
+     callback(100);
+}
+
+co(function*(next){
+   let timeout=10*1000;//timeout setting
+   let [err,result]=yield co.all(co_func1(1,2,3),co_func2(4,5,6),generic_callback,timeout);
+
+   console.log(err);//null
+   console.log(result)//[6,15,[100]]
+})()
+
 
 ```
 # Comparison
