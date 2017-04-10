@@ -4,6 +4,11 @@
 
 # ZCO ![build status][test_status_url] [![Coverage Status][coverage_status_url]][coverage_page]
 
+基于Generator的corountine模块,灵感来自TJ的[co](https://github.com/tj/co),但使用更加简洁高效。
+
+推荐支持解构语法node.js版本。
+
+
 Generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but more brief and has better performance.
 
 Recommend versions of node.js(or iojs)  which support the destructuring assignment syntax.
@@ -20,10 +25,18 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 
 # Why zco?
 
+   node.js 里面几乎所有的异步操作是回调的方式，比如文件模块（fs），人们在回调上包装一层变成Promise为了使代码结构清晰，但这是不必要的。
+ 其他的主流coroutine模块基本都要求yield之后的表达式返回一个Promise，开发Promise是为了清晰的代码，避免回调嵌套，coroutine模块也是同样的
+ 目的，那为什么还要依赖Promise呢！
+
    Most of asynchronous operations in node.js are based on callback ,people convert callback-style-code to Promise-style-code
  for a clear control-flow. And other coroutine modules do the same thing,but many of them require a Promise returned by the expression after `yield`.Promise is not necessary,and in order to use these coroutine module ,you have to do more to wrap callback api.
- 
+
+   __zco__被设计成可以和回调风格的API无缝使用，无需额外包装回调，同时也兼容 Promise,性能更好，代码更简洁。
+
+
    __zco__ is designed to work with callback seamlessly,do less operation,has better performance and a more brief code .Features of zco(some are special):
+
    * __defer__ like in golang ,`defer` define an operation that will be executed before the coroutine exit.
    * __plural return value__   code like this `let [value1,value2,value3]=yield func(next)`
    * __working with callback seamlessly__  no need to wrap
@@ -68,6 +81,8 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 
 # Example
 
+### simple useage
+
 ```javascript
 
 const co=require("zco");
@@ -83,7 +98,7 @@ let fake_async_func=function(callback){//support operation that is not an real-a
     callback(undefined,"hello world");
 }
 
-/*****************************simple use***************************/
+
 co(function *(next) {
     let [err,str]=yield async_func1(next);
     console.log(err);//null
@@ -94,7 +109,16 @@ co(function *(next) {
     console.log(str2);//"hello world"
 })()
 
-/*************************defer *******************************/
+```
+
+### defer
+
+`defer` 定义一个在当前co退出前一定会执行的操作，无论defer之后的代码是否报错。该功能可用来做一些清理工作。
+
+`defer` define an operation that will be executed before the coroutine exit even if error is occurred after `defer`.
+
+```javascript
+
 //define a resource ,that should be released after use;
 let resource={
    "referenceCount":0
@@ -115,9 +139,16 @@ co(function*(next,defer){
 	});
 	resour=getResource();
 	//..........
+	throw new Error();//even errored ,the operation defined by defer will be executed
 })();
 
-/************************catch  error*********************************/
+```
+
+### catch error
+
+错误捕捉
+
+```javascript
 
 let sync_code_error=function(callback){
     throw new Error("manual error");
@@ -131,7 +162,13 @@ co(function *(next) {
     console.log(err.message);//"manual error"
 })
 
-/**************************delivery return-value***********************/
+```
+
+### delivery return-value
+
+传递返回值
+
+```javascript
 
 let people={
     "age":100,
@@ -150,7 +187,14 @@ co(function*(next){
     console.log(err);//null
     console.log(age);//100
 })
-/*************************co nest**************************************/
+
+```
+
+### zco nest
+
+zco 嵌套
+
+```javascript
 
 let async_func2=function(a,b,c,callback){
     setTimeout(()=>{
@@ -168,9 +212,9 @@ let co_func1=function(a,b,c){
 let co_func2=function(a,b,c){
     return co(function*(next){
 
-        let [err,data]=yield co_func1(a,b,c);
+        let [err,data]=yield co_func1(a,b,c);//如果返回是co的返回值，就不用传递next了
 
-        //or "let [err,data]=yield co_func1(a,b,c)(next)", this  is also ok.
+        //or "let [err,data]=yield co_func1(a,b,c)(next)", this  is also ok.,当然也可以传递next
 
         return data;
     })
@@ -185,9 +229,15 @@ co(function*(next){
     console.log(d);//6
 })
 
+```
 
-/**********************************co all************************************/
+### zco.all
 
+execute operations concurrently
+
+并发执行一个操作集.
+
+```javascript
 
 let async_func2=function(a,b,c,callback){
     setTimeout(()=>{
@@ -216,16 +266,20 @@ let generic_callback=function(callback){//the first arg must be callback
 
 co(function*(next){
    let timeout=10*1000;//timeout setting
-   let [err,result]=yield co.all(co_func1(1,2,3),co_func2(4,5,6),generic_callback,timeout);
+   let [err,result]=yield co.all(co_func1(1,2,3),co_func2(4,5,6),generic_callback,timeout);//support set timeout，支持设置超时
 
    console.log(err);//null
    console.log(result)//[6,15,[100]]
 })()
 
-/***********************when there are Promise***********************************/
+```
+### when Promise
 
-// even if not recommend Promise ,sometimes we can't bypass.
+even if not recommend Promise ,sometimes we can't bypass.
 
+尽管不推荐使用Promise,zco也支持yield Promise.
+
+```javascript
 
 let promise_api=function(a,b){
   return Promise.resolve().then(function(){
@@ -240,8 +294,6 @@ co(function*(next){
 })()
 
 ```
-
-
 
 
 # License
