@@ -86,25 +86,105 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 ```javascript
 
 const co = require("zco");
+const request = require("request")
 
-const async_func1 = function (callback) {
-	let error = undefined;
-	setTimeout(() => {
-		callback(error, "hello world");
-	}, 10)
-}
 const fake_async_func = function (callback) { //support operation that is not an real-async action
 	callback(undefined, "hello world");
 }
 
 co(function  * (next) {
-	let[err, str] = yield async_func1(next);
-	console.log(err); //null
-	console.log(str); //"hello world"
 
-	let[err2, str2] = yield fake_async_func(next);
+	let[err, response, page] = yield request("http://www.google.com", next);	
+    //do something ....
+	
+	let[err2, msg] = yield fake_async_func(next);
 	console.log(err2); //null
-	console.log(str2); //"hello world"
+	console.log(msg); //"hello world"
+})()
+
+```
+
+### Zco Nest
+
+zco 嵌套
+
+```javascript
+const co = require("zco");
+const request = require("request");
+const cheerio = require("cheerio");
+
+const SEARCH_KEY = "generator based control flow";
+
+//seach project on github rank by stars;
+const searchGithubRankByStars = function (key, maxPage = 1) {
+	return co(function  * (next) {
+		key = key.split(/\s/g).join("+");
+		let list = [];
+		for (let i = 0; i < maxPage; i++) {
+			let url = "https://github.com/search?o=desc&p=" + (i + 1) + "&q=" + key + "&s=stars&type=Repositories&utf8=%E2%9C%93&_pjax=%23js-pjax-container";
+			let[err, response, body] = yield request(url, next);
+			if (err) {
+				throw err;
+			}
+			let $ = cheerio.load(body.toString());
+			$(".v-align-middle").each((_,item) => {
+				list.push({
+					"name" : $(item).text(),
+					"url" : "https://github.com" + $(item).attr("href")
+				});
+			});
+		}
+		return list;
+	});
+}
+
+co(function  * (next) {
+	let[err, list] = yield searchGithubRankByStars(SEARCH_KEY, 2);
+	if (err) {
+		throw err;
+	}
+	return list;
+})((err, list) => {
+	if (err) {
+		console.log(err);
+	} else {
+		console.log(list);
+	}
+})
+
+
+```
+
+### Zco.all
+
+execute operations concurrently
+
+并发执行一个操作集.
+
+```javascript
+const async_func = function (a, b, c, callback) {
+	setTimeout(() => {
+		callback(a + b + c);
+	}, 10)
+}
+
+const co_func = function (a, b, c) {
+	return co(function  * (next) {
+		let[d] = yield async_func(a, b, c, next);
+		return d;
+	})
+}
+
+const generic_callback = function (callback) { //the first arg must be callback
+	callback(100);
+}
+
+co(function  * (next) {
+	let timeout = 10 * 1000; //timeout setting
+	let[err, result] = yield co.all(co_func(1, 2, 3), co_func(4, 5, 6), generic_callback, timeout); //support set timeout，支持设置超时
+
+	console.log(err); //null
+	console.log(result) //[6,15,[100]]
 })()
 
 ```
@@ -135,9 +215,10 @@ co(function  * (next, defer) {
 	defer(function  * (inner_next) { //the arg of defer must be a generator function
 		releseResource(resour); //we should release the resource after use
 	});
+	
 	resour = getResource();
 	//..........
-	throw new Error(); //even errored ,the operation defined by defer will be executed
+	throw new Error(); //even if error occurred ,the operation defined by defer will be executed
 })();
 
 ```
@@ -160,118 +241,9 @@ co(function  * (next) {
 	console.log(err.message); //"manual error"
 })
 
-```
-
-### Delivery Return-value
-
-传递返回值
-
-```javascript
-
-const people = {
-	"age" : 100,
-	"say" : function (callback) {
-		var self = this;
-		setTimeout(function () {
-			callback(self.age);
-		}, 0)
-	}
-}
-
-co(function  * (next) {
-	var[age] = yield people.say(next);
-	return age;
-})((err, age) => {
-	console.log(err); //null
-	console.log(age); //100
-})
-
 
 ```
 
-### Zco Nest
-
-zco 嵌套
-
-```javascript
-
-const async_func2 = function (a, b, c, callback) {
-	setTimeout(() => {
-		callback(a + b + c);
-	}, 10)
-}
-
-const co_func1 = function (a, b, c) {
-	return co(function  * (next) {
-		let[d] = yield async_func2(a, b, c, next);
-		return d;
-	})
-}
-
-const co_func2 = function (a, b, c) {
-	return co(function  * (next) {
-
-		let[err, data] = yield co_func1(a, b, c); //如果返回是co的返回值，就不用传递next了
-
-		//or "let [err,data]=yield co_func1(a,b,c)(next)", this  is also ok.,当然也可以传递next
-
-		return data;
-	})
-}
-
-co(function  * (next) {
-	let[err, d] = yield co_func2(1, 2, 3);
-	console.log(err); //null
-	return d;
-})((err, d) => {
-	console.log(err); //null
-	console.log(d); //6
-})
-
-```
-
-### Zco.all
-
-execute operations concurrently
-
-并发执行一个操作集.
-
-```javascript
-
-const async_func2 = function (a, b, c, callback) {
-	setTimeout(() => {
-		callback(a + b + c);
-	}, 10)
-}
-
-const co_func1 = function (a, b, c) {
-	return co(function  * (next) {
-		let[d] = yield async_func2(a, b, c, next);
-		return d;
-	})
-}
-
-const co_func2 = function (a, b, c) {
-	return co(function  * (next) {
-		let[d] = yield async_func2(a, b, c, next);
-		return d;
-	})
-}
-
-const generic_callback = function (callback) { //the first arg must be callback
-	callback(100);
-}
-
-co(function  * (next) {
-	let timeout = 10 * 1000; //timeout setting
-	let[err, result] = yield co.all(co_func1(1, 2, 3), co_func2(4, 5, 6), generic_callback, timeout); //support set timeout，支持设置超时
-
-	console.log(err); //null
-	console.log(result) //[6,15,[100]]
-})()
-
-
-```
 ### When Promise
 
 Even if not recommend Promise ,sometimes we can't bypass.
