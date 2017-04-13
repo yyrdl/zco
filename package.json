@@ -1,6 +1,6 @@
 {
   "name": "zco",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "co_routine code style in js ,work with callback,and no promise",
   "main": "index.js",
   "scripts": {

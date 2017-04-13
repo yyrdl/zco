@@ -407,7 +407,7 @@ describe("yield Promise",function () {
 	}
 	it("should support promise",function (done) {
 		co(function*(next){
-			let [err,data]=yield promise_api();
+			let [err,data]=yield co.wrapPromise(promise_api());
 			if(err){
 				done(err);
 			}else if(data!=6){
@@ -426,13 +426,25 @@ describe("yield Promise",function () {
 	
 	it("should catch error throwed by Promise",function (done) {
 		co(function*(next){
-			let [err]=yield promise_api_error();
+			let [err]=yield co.wrapPromise(promise_api_error());
 			if(!err){
 				done(new Error());
 			}else{
 				done();
 			}
 		})()
+	})
+
+	it("should throw error when not a Promise",function(done){
+		co(function*(next){
+           yield co.wrapPromise("");
+		})((err)=>{
+			if(!err){
+				done(new Error("should throw error"));
+			}else{
+				done();
+			}
+		})
 	})
 
 })

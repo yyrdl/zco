@@ -4,25 +4,6 @@
 var slice = Array.prototype.slice;
 var toString = Object.prototype.toString;
 
-var wrapPromise = function (pro, callback) {
-	var hasReturn = false;
-	var _end = function (err, data) {
-		if (!hasReturn) {
-			hasReturn = true;
-			callback && callback(err, data);
-		}
-	}
-	pro.then(function (data) {
-		_end(null, data);
-	}).catch (function (err) {
-		_end(err);
-	});
-}
-
-
-var isPromise = function (pro) {
-	return pro && "function" == (typeof pro.then) && "function" == (typeof pro.catch );
-}
 
 var co = function (gen) {
 
@@ -50,12 +31,9 @@ var co = function (gen) {
 	var run = function (arg) {
 		try {
 			var v = iterator.next(arg);
-
 			hasReturn = true;
 			v.done && _end(null, v.value);
-
-			!v.done && v.value && v.value.__zco_future__ && v.value(next); //support yield zco
-			!v.done && isPromise(v.value) && wrapPromise(v.value, next); //support yield Promise
+			!v.done && v.value && v.value.__zco_future__ && v.value(next); //support yield zco_future
 		} catch (e) {
 			_end(e);
 		}
@@ -69,7 +47,7 @@ var co = function (gen) {
 		if (deferFunc != null) {
 			throw new Error("you can only defer once");
 		} else if ("[object GeneratorFunction]" !== toString.call(func)) {
-			throw new TypeError("the arg of refer must be a generator function");
+			throw new TypeError("The arg of refer must be a generator function!");
 		} else {
 			deferFunc = co(func);
 		}
@@ -86,7 +64,7 @@ var co = function (gen) {
 	if ("[object GeneratorFunction]" === toString.call(gen)) { //todo: support other Generator implements
 		iterator = gen(next, defer);
 	} else {
-		throw new TypeError("the arg of co must be a generator function");
+		throw new TypeError("The arg of co must be a generator function!");
 	}
 
 	var future = function (cb) {
@@ -182,7 +160,7 @@ var all = function () {
 
 	var future = function (callback) {
 		if ("function" != typeof callback) {
-			throw new TypeError("the arg of co.all's future must be a  function");
+			throw new TypeError("The arg of co.all's future must be a  function!");
 		}
 		cb = callback;
 		_run();
@@ -193,6 +171,40 @@ var all = function () {
 	return future;
 }
 
+var isPromise = function (pro) {
+	return pro && "function" === (typeof pro.then) && "function" === (typeof pro.catch );
+}
+
+var wrapPromise = function (pro) {
+	if(!isPromise(pro)){
+		throw new TypeError("The arg of wrapPromise must be an instance of Promise!");
+	}
+	var future=function (callback) {
+		var hasReturn = false;
+		var _end = function (err, data) {
+			if (!hasReturn) {
+				hasReturn = true;
+				callback && callback(err, data);
+			}
+		}
+		pro.then(function (data) {
+			_end(null, data);
+		}).catch (function (err) {
+			_end(err);
+		});
+	}
+	future.__zco_future__=true;
+	return future;
+}
+
+
 co.all = all;
+
+/**
+ *  I can't yield Promise directly ,that's unsafe.Becauce some callback-style API also return a Promise at the
+ * same time,such as `pg.client.query`.
+ *
+ * */
+co.wrapPromise=wrapPromise;
 
 module.exports = co;

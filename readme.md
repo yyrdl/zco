@@ -44,7 +44,7 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
    * __error catch__  different with Promise,if no handler is provided ,the error will be throwed out
    * __zco nest__ 
    * __zco.all__
-   * __yield Promise__  not recommend,but also support
+   * __support Promise__  not recommend,but also support
    
 
 # Performance Battle
@@ -85,28 +85,26 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 
 ```javascript
 
-const co=require("zco");
+const co = require("zco");
 
-
-let async_func1=function(callback){
-    let error=undefined;
-    setTimeout(()=>{
-        callback(error,"hello world");
-    },10)
+const async_func1 = function (callback) {
+	let error = undefined;
+	setTimeout(() => {
+		callback(error, "hello world");
+	}, 10)
 }
-let fake_async_func=function(callback){//support operation that is not an real-async action
-    callback(undefined,"hello world");
+const fake_async_func = function (callback) { //support operation that is not an real-async action
+	callback(undefined, "hello world");
 }
 
+co(function  * (next) {
+	let[err, str] = yield async_func1(next);
+	console.log(err); //null
+	console.log(str); //"hello world"
 
-co(function *(next) {
-    let [err,str]=yield async_func1(next);
-    console.log(err);//null
-    console.log(str);//"hello world"
-
-    let [err2,str2]=yield fake_async_func(next);
-    console.log(err2);//null
-    console.log(str2);//"hello world"
+	let[err2, str2] = yield fake_async_func(next);
+	console.log(err2); //null
+	console.log(str2); //"hello world"
 })()
 
 ```
@@ -115,31 +113,31 @@ co(function *(next) {
 
 `defer` 定义一个在当前co退出前一定会执行的操作，无论defer之后的代码是否报错。该功能可用来做一些清理工作。
 
-`defer` define an operation that will be executed before the coroutine exit even if error is occurred after `defer`.
+`defer` define an operation that will be executed before the coroutine exit, even if error is occurred after `defer`.
 
 ```javascript
 
 //define a resource ,that should be released after use;
-let resource={
-   "referenceCount":0
+const resource = {
+	"referenceCount" : 0
 }
 
-let getResource=function(){
-   resource.referenceCount+=1;
-   return resource;
+const getResource = function () {
+	resource.referenceCount += 1;
+	return resource;
 }
-let releseResource=function(resour){
-    resour&&(resour.referenceCount--);
+const releseResource = function (resour) {
+	resour && (resour.referenceCount--);
 }
 
-co(function*(next,defer){
-    let resour=null;
-    defer(function*(inner_next){//the arg of defer must be a generator function
-	  releseResource(resour);//we should release the resource after use
+co(function  * (next, defer) {
+	let resour = null;
+	defer(function  * (inner_next) { //the arg of defer must be a generator function
+		releseResource(resour); //we should release the resource after use
 	});
-	resour=getResource();
+	resour = getResource();
 	//..........
-	throw new Error();//even errored ,the operation defined by defer will be executed
+	throw new Error(); //even errored ,the operation defined by defer will be executed
 })();
 
 ```
@@ -150,16 +148,16 @@ co(function*(next,defer){
 
 ```javascript
 
-let sync_code_error=function(callback){
-    throw new Error("manual error");
-    setTimeout(callback,0);
+const sync_code_error = function (callback) {
+	throw new Error("manual error");
+	setTimeout(callback, 0);
 }
 
-co(function *(next) {
-    let a=yield sync_code_error(next);
-    return 10;
-})((err,v)=>{
-    console.log(err.message);//"manual error"
+co(function  * (next) {
+	let a = yield sync_code_error(next);
+	return 10;
+})((err, v) => {
+	console.log(err.message); //"manual error"
 })
 
 ```
@@ -170,23 +168,24 @@ co(function *(next) {
 
 ```javascript
 
-let people={
-    "age":100,
-    "say":function(callback){
-        var self=this;
-        setTimeout(function(){
-            callback(self.age);
-        },0)
-    }
+const people = {
+	"age" : 100,
+	"say" : function (callback) {
+		var self = this;
+		setTimeout(function () {
+			callback(self.age);
+		}, 0)
+	}
 }
 
-co(function*(next){
-    var [age]=yield people.say(next);
-    return age;
-})((err,age)=>{
-    console.log(err);//null
-    console.log(age);//100
+co(function  * (next) {
+	var[age] = yield people.say(next);
+	return age;
+})((err, age) => {
+	console.log(err); //null
+	console.log(age); //100
 })
+
 
 ```
 
@@ -196,37 +195,37 @@ zco 嵌套
 
 ```javascript
 
-let async_func2=function(a,b,c,callback){
-    setTimeout(()=>{
-        callback(a+b+c);
-    },10)
+const async_func2 = function (a, b, c, callback) {
+	setTimeout(() => {
+		callback(a + b + c);
+	}, 10)
 }
 
-let co_func1=function(a,b,c){
-    return co(function *(next) {
-        let [d]=yield async_func2(a,b,c,next);
-        return d;
-    })
+const co_func1 = function (a, b, c) {
+	return co(function  * (next) {
+		let[d] = yield async_func2(a, b, c, next);
+		return d;
+	})
 }
 
-let co_func2=function(a,b,c){
-    return co(function*(next){
+const co_func2 = function (a, b, c) {
+	return co(function  * (next) {
 
-        let [err,data]=yield co_func1(a,b,c);//如果返回是co的返回值，就不用传递next了
+		let[err, data] = yield co_func1(a, b, c); //如果返回是co的返回值，就不用传递next了
 
-        //or "let [err,data]=yield co_func1(a,b,c)(next)", this  is also ok.,当然也可以传递next
+		//or "let [err,data]=yield co_func1(a,b,c)(next)", this  is also ok.,当然也可以传递next
 
-        return data;
-    })
+		return data;
+	})
 }
 
-co(function*(next){
-    let [err,d]=yield co_func2(1,2,3);
-    console.log(err);//null
-    return d;
-})((err,d)=>{
-    console.log(err);//null
-    console.log(d);//6
+co(function  * (next) {
+	let[err, d] = yield co_func2(1, 2, 3);
+	console.log(err); //null
+	return d;
+})((err, d) => {
+	console.log(err); //null
+	console.log(d); //6
 })
 
 ```
@@ -239,58 +238,63 @@ execute operations concurrently
 
 ```javascript
 
-let async_func2=function(a,b,c,callback){
-    setTimeout(()=>{
-        callback(a+b+c);
-    },10)
+const async_func2 = function (a, b, c, callback) {
+	setTimeout(() => {
+		callback(a + b + c);
+	}, 10)
 }
 
-let co_func1=function(a,b,c){
-    return co(function *(next) {
-        let [d]=yield async_func2(a,b,c,next);
-        return d;
-    })
+const co_func1 = function (a, b, c) {
+	return co(function  * (next) {
+		let[d] = yield async_func2(a, b, c, next);
+		return d;
+	})
 }
 
-
-let co_func2=function(a,b,c){
-    return co(function *(next) {
-        let [d]=yield async_func2(a,b,c,next);
-        return d;
-    })
+const co_func2 = function (a, b, c) {
+	return co(function  * (next) {
+		let[d] = yield async_func2(a, b, c, next);
+		return d;
+	})
 }
 
-let generic_callback=function(callback){//the first arg must be callback
-     callback(100);
+const generic_callback = function (callback) { //the first arg must be callback
+	callback(100);
 }
 
-co(function*(next){
-   let timeout=10*1000;//timeout setting
-   let [err,result]=yield co.all(co_func1(1,2,3),co_func2(4,5,6),generic_callback,timeout);//support set timeout，支持设置超时
+co(function  * (next) {
+	let timeout = 10 * 1000; //timeout setting
+	let[err, result] = yield co.all(co_func1(1, 2, 3), co_func2(4, 5, 6), generic_callback, timeout); //support set timeout，支持设置超时
 
-   console.log(err);//null
-   console.log(result)//[6,15,[100]]
+	console.log(err); //null
+	console.log(result) //[6,15,[100]]
 })()
+
 
 ```
 ### When Promise
 
-even if not recommend Promise ,sometimes we can't bypass.
+Even if not recommend Promise ,sometimes we can't bypass.
 
-尽管不推荐使用Promise,zco也支持yield Promise.
+尽管不推荐使用Promise,zco也提供一个API来支持yield Promise.
 
 ```javascript
 
-let promise_api=function(a,b){
-  return Promise.resolve().then(function(){
-     return a+b;
-  });
+const promise_api = function (a, b) {
+	return Promise.resolve().then(function () {
+		return a + b;
+	});
 }
 
-co(function*(next){
-   let [err,data]=yield promise_api(1,2);
-   console.log(err);//null
-   console.log(data)://3;
+co(function  * (next) {
+
+	let[err, data] = yield co.wrapPromise(promise_api(1, 2));
+	/**
+	 *  Can't yield Promise directly ,that's unsafe.Becauce some callback-style API also return a Promise at the
+	 * same time,such as `pg.client.query`.
+	 * */
+	console.log(err); //null
+	console.log(data) : //3;
 })()
 
 ```
