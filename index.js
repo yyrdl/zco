@@ -4,27 +4,55 @@
 var slice = Array.prototype.slice;
 var toString = Object.prototype.toString;
 
+var isZcoFuture = function (future) {
+	return future && ("function" === typeof future.__zco_suspend__);
+}
+
+var isPromise = function (pro) {
+	return pro && "function" === (typeof pro.then) && "function" === (typeof pro.catch );
+}
 
 var co = function (gen) {
 
 	var iterator,
 	callback = null,
 	hasReturn = false,
-	deferFunc = null;
+	deferFunc = null,
+	suspended = false,
+	child_futures = [],
+	hasCallback = false;
 
-	var _end = function (e, v) {
-		var _cb = function (err) {
-			callback && callback(e || err, v); //I shoudn't catch the error throwed by user's callback
-			if (callback == null && (e || err)) { //the error should be throwed if no handler instead of  catching silently
-				throw e || err;
+	var _run_callback = function (err, value) {
+		if (!hasCallback) {
+			hasCallback = true;
+			if (callback != null) {
+				callback(err, value);
+			} else if (err) {
+				throw err;//throw out if no handler privided
 			}
 		}
-		if (deferFunc) {
-			deferFunc(function (err) {
-				_cb(err);
+	}
+
+	var _run_defer = function (err, value) {
+		if (deferFunc != null) {
+			var _func = co(deferFunc, "__wrap_zco_defer__", err);//build defer func,and delivery error
+			_func(function (e) {
+				if (e != null && callback === null) {
+					throw e;//error occurred in defer,throw out if no handler privided
+				} else  {
+					_run_callback(e || err, value)
+				}
 			});
-		} else {
-			_cb();
+		}
+	}
+
+	var _end = function (e, v) {
+		if (!hasCallback) {
+			if (deferFunc != null) {
+				_run_defer(e, v);
+			} else {
+				_run_callback(e, v);
+			}
 		}
 	}
 
@@ -33,7 +61,7 @@ var co = function (gen) {
 			var v = iterator.next(arg);
 			hasReturn = true;
 			v.done && _end(null, v.value);
-			!v.done && v.value && v.value.__zco_future__ && v.value(next); //support yield zco_future
+			!v.done && v.value && isZcoFuture(v.value) && (child_futures.push(v.value), v.value(next)); //support yield zco_future
 		} catch (e) {
 			_end(e);
 		}
@@ -43,30 +71,21 @@ var co = function (gen) {
 		hasReturn = false;
 		run(arg);
 	}
+	/**
+	 * define defer
+	 * */
 	var defer = function (func) {
 		if (deferFunc != null) {
 			throw new Error("you can only defer once");
 		} else if ("[object GeneratorFunction]" !== toString.call(func)) {
 			throw new TypeError("The arg of refer must be a generator function!");
 		} else {
-			deferFunc = co(func);
+			deferFunc = func;
 		}
 	}
-	var next = function () {
-		var arg = slice.call(arguments);
-		if (!hasReturn) { //support fake async operation,avoid error: "Generator is already running"
-			setTimeout(nextSlave, 0, arg);
-		} else {
-			nextSlave(arg);
-		}
-	}
-
-	if ("[object GeneratorFunction]" === toString.call(gen)) { //todo: support other Generator implements
-		iterator = gen(next, defer);
-	} else {
-		throw new TypeError("The arg of co must be a generator function!");
-	}
-
+	/**
+	 * define zco future
+	 * */
 	var future = function (cb) {
 		if ("function" == typeof cb) {
 			callback = cb;
@@ -74,7 +93,43 @@ var co = function (gen) {
 		run();
 	}
 
-	future.__zco_future__ = true;
+	future.__zco_suspend__ = function () {
+		if (!suspended) {
+			if (!hasCallback) {
+				hasCallback = true;
+				_run_defer(new Error("coroutine is suspended,maybe because of timeout."));
+			}
+			suspended = true;
+			for (var i = 0; i < child_futures.length; i++) { //suspend child future;
+				child_futures[i].__zco_suspend__();
+			}
+
+			iterator.return ();
+		}
+	}
+
+	var next = function () {
+		if (!suspended) {
+			var arg = slice.call(arguments);
+			if (!hasReturn) { //support fake async operation,avoid error: "Generator is already running"
+				setTimeout(function () {
+					nextSlave(arg);
+				}, 0);
+			} else {
+				nextSlave(arg);
+			}
+		}
+	}
+
+	if ("[object GeneratorFunction]" === toString.call(gen)) { //todo: support other Generator implements
+		if (arguments[1]==="__wrap_zco_defer__") {
+			iterator = gen(next, arguments[2]);
+		} else {
+			iterator = gen(next, defer);
+		}
+	} else {
+		throw new TypeError("The arg of co must be a generator function!");
+	}
 
 	return future;
 }
@@ -100,14 +155,30 @@ var all = function () {
 			break;
 		}
 	}
+	var _suspend_zco_future = function () {
+		for (var i = 0; i < actions.length; i++) {
+			if (isZcoFuture(actions[i])) {
+				actions[i].__zco_suspend__();
+			}
+		}
+	}
 
-	var _end = function (err, result, istimeout) {
-		if (!istimeout && timeout_handle) {
+	var _end = function (err, result, is_timeout) {
+		if (!is_timeout && timeout_handle) {
 			clearTimeout(timeout_handle);
 		}
 		if (!hasReturn) {
 			hasReturn = true;
-			cb(err, result);
+
+			if (is_timeout) { //self timeout ,suspend zco futures
+				_suspend_zco_future();
+			}
+
+			if (cb !== null) {
+				cb(err, result);
+			} else if (err) {
+				throw err;
+			}
 		}
 	}
 
@@ -116,6 +187,9 @@ var all = function () {
 		var result = [];
 
 		var check = function () {
+			if (hasReturn) {
+				return;
+			}
 			num++;
 			if (num == actions.length) {
 				_end(null, result, false);
@@ -131,7 +205,7 @@ var all = function () {
 				try {
 					actions[index](function () {
 						var res = slice.call(arguments);
-						if (actions[index].__zco_future__) {
+						if (isZcoFuture(actions[index])) {
 							if (res[0]) {
 								_end(res[0], undefined, false);
 							} else {
@@ -150,7 +224,7 @@ var all = function () {
 			})(i)
 		}
 
-		if (timeout != undefined) {
+		if (timeout !== null) {
 			timeout_handle = setTimeout(function () {
 					_end(new Error("timeout"), undefined, true);
 				}, timeout)
@@ -166,21 +240,25 @@ var all = function () {
 		_run();
 	};
 
-	future.__zco_future__ = true;
+	future.__zco_suspend__ = function () {
+		if (!hasReturn) {
+			if (!hasReturn && timeout_handle != null) {
+				clearTimeout(timeout_handle);
+			}
+			hasReturn = true;
+			_suspend_zco_future();
+		}
+	}
 
 	return future;
 }
 
-var isPromise = function (pro) {
-	return pro && "function" === (typeof pro.then) && "function" === (typeof pro.catch );
-}
-
 var wrapPromise = function (pro) {
-	if(!isPromise(pro)){
+	if (!isPromise(pro)) {
 		throw new TypeError("The arg of wrapPromise must be an instance of Promise!");
 	}
-	var future=function (callback) {
-		var hasReturn = false;
+	var hasReturn = false;
+	var future = function (callback) {
 		var _end = function (err, data) {
 			if (!hasReturn) {
 				hasReturn = true;
@@ -193,10 +271,69 @@ var wrapPromise = function (pro) {
 			_end(err);
 		});
 	}
-	future.__zco_future__=true;
+	future.__zco_suspend__ = function () {
+		hasReturn = true;
+	}
 	return future;
 }
 
+var timeLimit = function (ms, future) {
+	var timeout_handle = null,
+	is_timeout = false,
+	has_return = false,
+	callback = null;
+
+	if ("[object Number]" !== toString.call(ms) || ms < 0) {
+		throw new TypeError("Illegal timeout setting!")
+	}
+	if (!isZcoFuture(future)) {
+		throw new TypeError("You can only set timeout of zco future(value returned by zco)");
+	}
+
+	var cb_slave = function (err, result) {
+		if (!has_return) {
+			has_return = true;
+
+			if (!is_timeout && timeout_handle != null) {
+				clearTimeout(timeout_handle);
+			}
+
+			if (is_timeout) { //if timeout,suspend the operation
+				future.__zco_suspend__();
+			}
+
+			if (callback) {
+				callback(err, result);
+			} else if (err) {
+				throw err;
+			}
+		}
+	}
+
+	var t_future = function (cb) {
+		if ("function" == typeof cb) {
+			callback = cb;
+		}
+		timeout_handle = setTimeout(function () {
+				is_timeout = true;
+				cb_slave(new Error("timeout"));
+			}, ms);
+		future(cb_slave);
+	}
+
+	t_future.__zco_suspend__ = function () {
+		if (!has_return) {
+			has_return = true;
+			if (!is_timeout && timeout_handle) {
+				clearTimeout(timeout_handle);
+			}
+			future.__zco_suspend__();
+		}
+	}
+
+	return t_future;
+
+}
 
 co.all = all;
 
@@ -205,6 +342,8 @@ co.all = all;
  * same time,such as `pg.client.query`.
  *
  * */
-co.wrapPromise=wrapPromise;
+co.wrapPromise = wrapPromise;
+
+co.timeLimit = timeLimit;
 
 module.exports = co;

@@ -396,7 +396,40 @@ describe("co.all", function () {
 				}
 			}
 	})
+	
+	it("all:actions(zco future) should be suspended when timeout",function (done) {
+		var varialble1=1,varialble2=2;
+		var action1=function () {
+			return co(function *(next) {
+				varialble1=11;
+				yield setTimeout(next,20);
+				varialble1=111;
+			})
+		}
+		var action2=function () {
+			return Promise.resolve();
+		}
 
+		co(function *(next) {
+			varialble2=22;
+			let [err]=yield co.all(action1(),co.wrapPromise(action2()),10);
+			if(err){
+				throw err;
+			}else{
+				varialble2=222;
+			}
+		})((err)=>{
+			if(err&&err.message=="timeout"){
+				if(varialble1==11&&varialble2==22){
+					done()
+				}else{
+					done(new Error());
+				}
+			}else{
+				done();
+			}
+		})
+	})
 })
 
 describe("yield Promise",function () {
@@ -446,5 +479,47 @@ describe("yield Promise",function () {
 			}
 		})
 	})
+})
 
+describe("timeLimit",function () {
+	it("should throw timeout",function (done) {
+		co.timeLimit(2*10,co(function *(next) {
+			yield setTimeout(next,5*10);
+		}))((err)=>{
+			if(err&&err.message=="timeout"){
+				done()
+			}else{
+				done(new Error());
+			}
+		})
+	});
+	
+	it("should be suspended when timeout",function (done) {
+		var varialble1=1,varialble2=2;
+		var func1=function () {
+			return co(function *(next) {
+                varialble1=11;
+				yield setTimeout(next,2*10);
+				varialble1=111;
+			})
+		}
+
+		co.timeLimit(1*10,co(function *(next) {
+			varialble2=22;
+			yield func1();
+			varialble2=222;
+		}))((err)=>{
+			setTimeout(function () {
+				if(err&&err.message=="timeout"){
+					if(varialble1!=11||varialble2!=22){
+						done(new Error());
+					}else{
+						done();
+					}
+				}else{
+					done(new Error());
+				}
+			},3*10);
+		})
+	})
 })

@@ -44,28 +44,30 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
    * __error catch__  different with Promise,if no handler is provided ,the error will be throwed out
    * __zco nest__ 
    * __zco.all__
+   * __zco.timeLimit__
+   * __suspend timeout coroutine__
    * __support Promise__  not recommend,but also support
    
 
 # Performance Battle
 
-    results for 20000 parallel executions, 1 ms per I/O op ,2017-04-10
+    results for 20000 parallel executions, 1 ms per I/O op ,2017-04-16
 
     name                                                      timecost(ms)     memery(mb)       
-    callback.js                                               94               31.0625
-    async-neo@1.8.2.js                                        172              48.58984375
-    promise_bluebird@2.11.0.js                                672              85.77734375
-    co_zco_yyrdl@1.2.3.js                                     850              78.1640625
-    async_caolan@1.5.2.js                                     1067             122.47265625
-    co_when_generator_cujojs@3.7.8.js                         1077             116.765625
-    co_when_generator_cujojs_with_bluebird@3.7.8.js           1312             131.68359375
-    co_tj_with_bluebird_promise@4.6.0.js                      1313             125.4453125
-    async_await_es7_with_native_promise.js                    1373             160.55859375
-    promise_native.js                                         1388             177.76171875
-    co_tj_with_native_promise@4.6.0.js                        1653             162.546875
-    co_when_generator_cujojs_with_native_promise@3.7.8.js     1705             169.24609375
-    async_await_es7_with_bluebird_promise.js                  1780             198.07421875
-    co_coroutine_bluebird@2.11.0.js                           4146             242.49609375
+    callback.js                                               105              31.0859375
+    async-neo@1.8.2.js                                        175              48.5390625
+    promise_bluebird@2.11.0.js                                702              92.46875
+    co_zco_yyrdl@1.2.5.js                                     950              86.57421875
+    async_caolan@1.5.2.js                                     1056             122.43359375
+    co_when_generator_cujojs@3.7.8.js                         1107             117.51171875
+    co_when_generator_cujojs_with_bluebird@3.7.8.js           1305             128.17578125
+    co_tj_with_bluebird_promise@4.6.0.js                      1372             125.44140625
+    promise_native.js                                         1397             170.75
+    async_await_es7_with_native_promise.js                    1402             159.4765625
+    co_when_generator_cujojs_with_native_promise@3.7.8.js     1656             169.26171875
+    co_tj_with_native_promise@4.6.0.js                        1756             162.4375
+    async_await_es7_with_bluebird_promise.js                  1789             197.92578125
+    co_coroutine_bluebird@2.11.0.js                           4254             242.26171875
     
 
 
@@ -108,6 +110,10 @@ co(function  * (next) {
 
 zco 嵌套
 
+A demo that search github projects rank by star.
+
+一个搜索github的例子，搜索结果按star的多少排序
+
 ```javascript
 const co = require("zco");
 const request = require("request");
@@ -115,17 +121,21 @@ const cheerio = require("cheerio");
 
 const SEARCH_KEY = "generator based control flow";
 
-//seach project on github rank by stars;
+//search project on github rank by stars;
+
 const searchGithubRankByStars = function (key, maxPage = 1) {
 	return co(function  * (next) {
 		key = key.split(/\s/g).join("+");
 		let list = [];
 		for (let i = 0; i < maxPage; i++) {
 			let url = "https://github.com/search?o=desc&p=" + (i + 1) + "&q=" + key + "&s=stars&type=Repositories&utf8=%E2%9C%93&_pjax=%23js-pjax-container";
-			let[err, response, body] = yield request(url, next);
+
+			let[err, response, body] = yield request(url, next);//start search
 			if (err) {
 				throw err;
 			}
+
+			//parse
 			let $ = cheerio.load(body.toString());
 			$(".v-align-middle").each((_,item) => {
 				list.push({
@@ -206,22 +216,79 @@ const getResource = function () {
 	resource.referenceCount += 1;
 	return resource;
 }
-const releseResource = function (resour) {
-	resour && (resour.referenceCount--);
+const releaseResource = function (resource) {
+	resource && (resource.referenceCount--);
 }
 
 co(function  * (next, defer) {
-	let resour = null;
-	defer(function  * (inner_next) { //the arg of defer must be a generator function
-		releseResource(resour); //we should release the resource after use
+	let resource = null;
+	defer(function  * (inner_next,err) { //the arg of defer must be a generator function,and zco also treats defer as an error handler
+	    if(err) {
+	      console.log(err.message);//"test"
+	    }
+
+		releaseResource(resource); //we should release the resource after use
+
 	});
 	
-	resour = getResource();
+	resource = getResource();
 	//..........
-	throw new Error(); //even if error occurred ,the operation defined by defer will be executed
+	throw new Error("test"); //even if error occurred ,the operation defined by defer will be executed
+
 })();
 
+
 ```
+
+### Zco.timeLimit
+
+set a time limit,suspend the coroutine and throw an error when timeout.
+
+为一个操作设置最大时间限制，超时未完成则挂起并抛出超时错误.
+
+```javascript
+
+var variable = 1;
+co.timeLimit(1 * 10, co(function  * (next) {
+		variable = 11;
+		yield setTimeout(next, 2 * 10);//wait 10ms
+		variable = 111;
+}))((err) => {
+	console.log(err.message); //"timeout"
+})
+
+setTimeout(function () {
+	console.log(variable);
+	//output "11",not "111",because the coroutine was suspended when timeout.
+	//打印出11 而不是111，是因为超时后该coroutine被挂起了，后面的语句将不会执行
+
+}, 5 * 10);
+
+//more example
+
+var variable2 = 2;
+
+const co_func = function () {
+	return co(function  * (next) {
+		variable2 = 222;
+		yield setTimeout(next, 20);//be suspended here because of timeout
+		variable2 = 2222;
+	});
+}
+
+co.timeLimit(10, co(function  * (next) {
+		variable2 = 22;
+		yield co_func();
+	}))((err) => {
+	console.log(err.message); //"timeout";
+})
+
+setTimeout(function () {
+	console.log(variable2); //"222"
+}, 40);
+
+```
+
 
 ### Catch Error
 
