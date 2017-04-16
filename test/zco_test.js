@@ -38,15 +38,17 @@ describe("normal use", function () {
 	})
 
 	it("catch sync code error1", function (done) {
-		co(function  * (next) {
+		var future=co(function  * (next) {
 			var a = yield sync_code_error(next);
 			return 10;
-		})(function (err, v) {
+		});
+		future(function (err, v) {
 			if (!err) {
 				done(new Error("err should not be undefined"))
 			} else {
 				done();
 			}
+			future.__zco_suspend__();
 		})
 	})
 
@@ -333,12 +335,15 @@ describe("co.all", function () {
 
 	it("all :catch error occurred in co", function (done) {
 		co(function  * (next) {
-			let[err] = yield co.all(co_error_func(), co_func1(1, 2, 3), "null");
+			let future=co.all(co_error_func(), co_func1(1, 2, 3), "null")
+			let[err] = yield future;
 			if (!err) {
 				done(new Error("error should be caught"));
 			} else {
 				done();
 			}
+			future.__zco_suspend__();
+			future.__zco_suspend__();
 		})()
 	})
 
@@ -381,21 +386,6 @@ describe("co.all", function () {
 		})()
 	})
 
-	it("all :should error when no callback privided", function (done) {
-		var error = null
-			try {
-				co.all()();
-			} catch (e) {
-				error = e;
-			}
-			finally {
-				if (error == null) {
-					done(new Error("should throw error"))
-				} else {
-					done();
-				}
-			}
-	})
 	
 	it("all:actions(zco future) should be suspended when timeout",function (done) {
 		var varialble1=1,varialble2=2;
@@ -429,6 +419,19 @@ describe("co.all", function () {
 				done();
 			}
 		})
+	})
+	it("all:should be throwed out if no handler provided",function (done) {
+		try{
+			co.all(function(){
+				throw new Error();
+			})();
+		}catch (e){
+			if(e){
+				done()
+			}else{
+				done(new Error());
+			}
+		}
 	})
 })
 
@@ -503,12 +506,13 @@ describe("timeLimit",function () {
 				varialble1=111;
 			})
 		}
-
-		co.timeLimit(1*10,co(function *(next) {
+        var future=co(function *(next) {
 			varialble2=22;
 			yield func1();
 			varialble2=222;
-		}))((err)=>{
+		});
+
+		co.timeLimit(1*10,future)((err)=>{
 			setTimeout(function () {
 				if(err&&err.message=="timeout"){
 					if(varialble1!=11||varialble2!=22){
@@ -519,7 +523,60 @@ describe("timeLimit",function () {
 				}else{
 					done(new Error());
 				}
+				future.__zco_suspend__();
+				future.__zco_suspend__();
 			},3*10);
 		})
 	})
+	it("should throw error when wrong timeout setting1",function (done) {
+		try{
+			co.timeLimit("l",co(function*(){}))()
+		}catch (e){
+			if(e){
+				done()
+			}else{
+				done(new Error());
+			}
+		}
+	})
+
+	it("should throw error when wrong timeout setting2",function (done) {
+		try{
+			co.timeLimit(-100,co(function*(){}))()
+		}catch (e){
+			if(e){
+				done()
+			}else{
+				done(new Error());
+			}
+		}
+	})
+
+	it("should throw error when not zco future",function (done) {
+		try{
+			co.timeLimit(100,function(){})()
+		}catch (e){
+			if(e){
+				done()
+			}else{
+				done(new Error());
+			}
+		}
+	})
+
+	it("not timeout branch",function(done){
+		var future=co.timeLimit(10*1000,co(function *() {
+			return 1;
+		}));
+
+		future((err)=>{
+			if(err){
+				done(err);
+			}else{
+				done();
+			}
+			future.__zco_suspend__();
+		})
+	})
+
 })

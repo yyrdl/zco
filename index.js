@@ -47,12 +47,10 @@ var co = function (gen) {
 	}
 
 	var _end = function (e, v) {
-		if (!hasCallback) {
-			if (deferFunc != null) {
-				_run_defer(e, v);
-			} else {
-				_run_callback(e, v);
-			}
+		if (deferFunc != null) {
+			_run_defer(e, v);
+		} else {
+			_run_callback(e, v);
 		}
 	}
 
@@ -233,10 +231,9 @@ var all = function () {
 	}
 
 	var future = function (callback) {
-		if ("function" != typeof callback) {
-			throw new TypeError("The arg of co.all's future must be a  function!");
+		if ("function" == typeof callback) {
+			cb = callback;
 		}
-		cb = callback;
 		_run();
 	};
 

@@ -172,14 +172,10 @@ execute operations concurrently
 并发执行一个操作集.
 
 ```javascript
-const async_func = function (a, b, c, callback) {
-	setTimeout(() => {
-		callback(a + b + c);
-	}, 10)
-}
 
 const co_func = function (a, b, c) {
 	return co(function  * (next) {
+	    yield setTimeout(next,10);//wait 10ms
 		let[d] = yield async_func(a, b, c, next);
 		return d;
 	})
@@ -250,9 +246,9 @@ set a time limit,suspend the coroutine and throw an error when timeout.
 
 var variable = 1;
 co.timeLimit(1 * 10, co(function  * (next) {
-		variable = 11;
-		yield setTimeout(next, 2 * 10);//wait 10ms
-		variable = 111;
+	variable = 11;
+	yield setTimeout(next, 2 * 10);//wait 20ms,等待20毫秒模拟耗时的操作，由于大于10ms，超时，将在这里被挂起
+	variable = 111;
 }))((err) => {
 	console.log(err.message); //"timeout"
 })
@@ -277,9 +273,9 @@ const co_func = function () {
 }
 
 co.timeLimit(10, co(function  * (next) {
-		variable2 = 22;
-		yield co_func();
-	}))((err) => {
+	variable2 = 22;
+	yield co_func();
+}))((err) => {
 	console.log(err.message); //"timeout";
 })
 
