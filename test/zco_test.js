@@ -579,4 +579,29 @@ describe("timeLimit",function () {
 		})
 	})
 
+	it("co.all timeout case",function (done) {
+		co.timeLimit(10,co(function *(next) {
+			yield co.all(function(cb){
+				setTimeout(cb,10*1000);
+			});
+		}))((err)=>{
+			if(err){
+				done();
+			}else{
+				done(new Error());
+			}
+		});
+	})
+   
+	it("co.timeLimit self timeout case",function(done){
+		co.timeLimit(10,co.timeLimit(3*10,co(function*(next){
+			yield setTimeout(next,2*10);
+		})))((err)=>{
+			if(err){
+				done();
+			}else{
+				done(new Error());
+			}
+		})
+	})
 })
