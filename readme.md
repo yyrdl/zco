@@ -176,8 +176,7 @@ execute operations concurrently
 const co_func = function (a, b, c) {
 	return co(function  * (next) {
 	    yield setTimeout(next,10);//wait 10ms
-		let[d] = yield async_func(a, b, c, next);
-		return d;
+		return a+b+c;
 	})
 }
 
@@ -223,8 +222,7 @@ co(function  * (next, defer) {
 	      console.log(err.message);//"test"
 	    }
 
-		releaseResource(resource); //we should release the resource after use
-
+	    releaseResource(resource); //we should release the resource after use
 	});
 	
 	resource = getResource();
