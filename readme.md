@@ -4,50 +4,41 @@
 
 # ZCO ![build status][test_status_url] [![Coverage Status][coverage_status_url]][coverage_page]
 
-基于Generator的corountine模块,灵感来自TJ的[co](https://github.com/tj/co),但使用更加简洁高效。
+基于Generator的corountine模块,无外部依赖，支持defer和协程超时终止.
 
 推荐支持解构语法node.js版本。
 
 
-Generator based control flow,inspired by tj's [co](https://github.com/tj/co) , but more brief and has better performance.
+Generator based control flow, support `defer` and timeout coroutine suspension.
 
 Recommend versions of node.js(or iojs)  which support the destructuring assignment syntax.
+
+> __What's coroutine?__ coroutine is computer program component,it alow you write sync-style code ,but the code is running in async way. 协程是计算机程序组件，他允许我们写同步风格的但却是异步执行的代码。 
 
 
 # Table Of Contents
 
-*  [Why zco](#why-zco)
+*  [Special-Features](#special-features)
 *  [Performance Battle](#performance-battle)
 *  [Useage](#useage)
 *  [Example](#example)
 *  [Compare with tj's co,Promise, callback,and ES7 "async/await" when do samething](https://github.com/yyrdl/zco/blob/master/readmes/compare.md)
 
 
-# Why zco?
+# Special Features
 
-   node.js 里面几乎所有的异步操作是回调的方式，比如文件模块（fs），为了使代码结构清晰,人们把回调包装成Promise，但这是不必要的。
- 主流coroutine模块基本都要求yield之后的表达式返回一个Promise，开发Promise是为了清晰的代码，避免回调嵌套，coroutine模块也是同样的
- 目的，那为什么还要依赖Promise呢！
+* __defer__  
 
-   Most of asynchronous operations in node.js are based on callback ,people convert callback-style-code to Promise-style-code
- for a clear control-flow. And other coroutine modules do the same thing,but many of them require a Promise returned by the expression after `yield`.Promise is not necessary,and in order to use these coroutine module ,you have to do more to wrap callback api.
+与golang的defer关键字类似，`defer` 定义了一个在coroutine退出时必定会执行的操作，无论coroutine是否报错。可以使用defer定义一些退出时的清理工作，可类比C++的析构函数。
 
-   zco 被设计成可以和回调风格的API无缝使用，无需额外包装回调，同时也兼容 Promise,性能更好，代码更简洁。
+like in golang,`defer` define an operation that will be executed after the coroutine exit .you can set some clear-up work in defer, or define some operation that must be executed whenever there is error in coroutine.
 
+* __coroutine suspension__ 
 
-   __zco__ is designed to work with callback seamlessly,do less operation,has better performance and a more brief code .Features of zco(some are special):
-
-   * __defer__ like in golang ,`defer` define an operation that will be executed before the coroutine exit.
-   * __plural return value__   code like this `let [value1,value2,value3]=yield func(next)`
-   * __working with callback seamlessly__  no need to wrap
-   * __support fake asynchronous operation__  zco will check if it is real-async,this feature avoid error: "Generator is already running"
-   * __error catch__  different with Promise,if no handler is provided ,the error will be throwed out
-   * __zco nest__ 
-   * __zco.all__
-   * __zco.timeLimit__
-   * __suspend timeout coroutine__
-   * __support Promise__  not recommend,but also support
-   
+ zco 提供的`co.all`和`co.timeLimit`俩个方法支持设置超时时间，一旦超时，未完成的任务就没有继续执行的意义， zco将会终止超时的coroutine，避免无谓的资源消耗。
+ 
+ `co.all` and `co.timeLimit` support timeout settiing. there is no reason to execute the unfinished coroutines which will be suspended.
+  
 
 # Performance Battle
 
@@ -105,8 +96,152 @@ co(function  * (next) {
 })()
 
 ```
+### Defer
 
-### Zco Nest
+一个简单使用defer的例子:定义一个并发锁，控制访问谷歌首页的并发量是5，为保证锁被释放，在defer里调用`mutex.unLock` 方法.
+
+A simple `defer` usage: define a concurrent lock ,make the max concurrency is  5 when request google main page. In order to make sure the lock is be freed after `lock` ,we invoke the `unLock` method in `defer`.
+
+```javascript
+const reuqest = require("request");
+
+//define concurrent lock factory. 定义并发锁工厂
+const ConcurrentLockFactory = {
+	"new" : function (max_concurrent) {
+		return {
+			"current_running" : 0,
+			"unLock" : function () {
+				this.current_running--;
+				this._awake();
+			},
+			"lock" : function () {
+				this.current_running++;
+			},
+			"busy" : function () {
+				return this.current_running > max_concurrent - 1;
+			},
+			"waitFree" : function (callback) {
+				this._reply_pool.push(callback);
+				this._awake();
+			},
+			"_reply_pool" : [],
+			"_awake" : function () {
+				if (this.current_running < max_concurrent) {
+					let func = this._reply_pool.shift();
+					if ("function" == typeof func) {
+						func();
+					}
+				}
+			}
+		}
+	}
+}
+
+//set max concurrency is 5
+
+const mutex = ConcurrentLockFactory.new(5);
+
+//the function below will make sure the max concurrency is 5,even if you invoke the method 10000 times at the same time
+// 下面这个方法将确保最大并发量是5，即使同时调用这个方法10000次。
+
+const requestGoogleMainPage = function () {
+	return co(function  * (next, defer) {
+		defer(function  * (inner_next,error) {//the error is the error occurred outside ,such as error throwed below
+			mutex.unLock();//released the mutex
+		});
+		//concurrency control
+		if (mutex.busy()) {
+			yield mutex.waitFree(next);//wait free
+		}
+		mutex.lock();//lock the mutex
+		let[err, res, body] = yield request.get('http://google.com', next);
+		if (err) {
+			throw err;
+		}
+		return body;
+	});
+}
+
+```
+### Zco.timeLimit
+
+set a time limit,suspend the coroutine and throw an error when timeout.
+
+为一个操作设置最大时间限制，超时未完成则挂起并抛出超时错误.
+
+```javascript
+
+var variable = 1;
+co.timeLimit(1 * 10, co(function  * (next) {
+	variable = 11;
+	yield setTimeout(next, 2 * 10);//wait 20ms,等待20毫秒模拟耗时的操作，由于大于10ms，超时，将在这里被挂起
+	variable = 111;
+}))((err) => {
+	console.log(err.message); //"timeout"
+})
+
+setTimeout(function () {
+	console.log(variable);
+	//output "11",not "111",because the coroutine was suspended when timeout.
+	//打印出11 而不是111，是因为超时后该coroutine被挂起了，后面的语句将不会执行
+
+}, 5 * 10);
+
+//more example
+
+var variable2 = 2;
+
+const co_func = function () {
+	return co(function  * (next) {
+		variable2 = 222;
+		yield setTimeout(next, 20);//be suspended here because of timeout
+		variable2 = 2222;
+	});
+}
+
+co.timeLimit(10, co(function  * (next) {
+	variable2 = 22;
+	yield co_func();
+}))((err) => {
+	console.log(err.message); //"timeout";
+})
+
+setTimeout(function () {
+	console.log(variable2); //"222"
+}, 40);
+
+```
+
+### Zco.all
+
+execute operations concurrently
+
+并发执行一个操作集.
+
+```javascript
+
+const co_func = function (a, b, c) {
+	return co(function  * (next) {
+	    yield setTimeout(next,10);//wait 10ms
+		return a+b+c;
+	})
+}
+
+const generic_callback = function (callback) { //the first arg must be callback
+	callback(100);
+}
+
+co(function  * (next) {
+	let timeout = 10 * 1000; //timeout setting
+	let[err, result] = yield co.all(co_func(1, 2, 3), co_func(4, 5, 6), generic_callback, timeout); //support set timeout，支持设置超时
+
+	console.log(err); //null
+	console.log(result) //[6,15,[100]]
+})()
+
+```
+
+### Zco nest
 
 zco 嵌套
 
@@ -164,125 +299,6 @@ co(function  * (next) {
 
 
 ```
-
-### Zco.all
-
-execute operations concurrently
-
-并发执行一个操作集.
-
-```javascript
-
-const co_func = function (a, b, c) {
-	return co(function  * (next) {
-	    yield setTimeout(next,10);//wait 10ms
-		return a+b+c;
-	})
-}
-
-const generic_callback = function (callback) { //the first arg must be callback
-	callback(100);
-}
-
-co(function  * (next) {
-	let timeout = 10 * 1000; //timeout setting
-	let[err, result] = yield co.all(co_func(1, 2, 3), co_func(4, 5, 6), generic_callback, timeout); //support set timeout，支持设置超时
-
-	console.log(err); //null
-	console.log(result) //[6,15,[100]]
-})()
-
-```
-
-### Defer
-
-`defer` 定义一个在当前co退出前一定会执行的操作，无论defer之后的代码是否报错。该功能可用来做一些清理工作。
-
-`defer` define an operation that will be executed before the coroutine exit, even if error is occurred after `defer`.
-
-```javascript
-
-//define a resource ,that should be released after use;
-const resource = {
-	"referenceCount" : 0
-}
-
-const getResource = function () {
-	resource.referenceCount += 1;
-	return resource;
-}
-const releaseResource = function (resource) {
-	resource && (resource.referenceCount--);
-}
-
-co(function  * (next, defer) {
-	let resource = null;
-	defer(function  * (inner_next,err) { //the arg of defer must be a generator function,and zco also treats defer as an error handler
-	    if(err) {
-	      console.log(err.message);//"test"
-	    }
-
-	    releaseResource(resource); //we should release the resource after use
-	});
-	
-	resource = getResource();
-	//..........
-	throw new Error("test"); //even if error occurred ,the operation defined by defer will be executed
-
-})();
-
-
-```
-
-### Zco.timeLimit
-
-set a time limit,suspend the coroutine and throw an error when timeout.
-
-为一个操作设置最大时间限制，超时未完成则挂起并抛出超时错误.
-
-```javascript
-
-var variable = 1;
-co.timeLimit(1 * 10, co(function  * (next) {
-	variable = 11;
-	yield setTimeout(next, 2 * 10);//wait 20ms,等待20毫秒模拟耗时的操作，由于大于10ms，超时，将在这里被挂起
-	variable = 111;
-}))((err) => {
-	console.log(err.message); //"timeout"
-})
-
-setTimeout(function () {
-	console.log(variable);
-	//output "11",not "111",because the coroutine was suspended when timeout.
-	//打印出11 而不是111，是因为超时后该coroutine被挂起了，后面的语句将不会执行
-
-}, 5 * 10);
-
-//more example
-
-var variable2 = 2;
-
-const co_func = function () {
-	return co(function  * (next) {
-		variable2 = 222;
-		yield setTimeout(next, 20);//be suspended here because of timeout
-		variable2 = 2222;
-	});
-}
-
-co.timeLimit(10, co(function  * (next) {
-	variable2 = 22;
-	yield co_func();
-}))((err) => {
-	console.log(err.message); //"timeout";
-})
-
-setTimeout(function () {
-	console.log(variable2); //"222"
-}, 40);
-
-```
-
 
 ### Catch Error
 
