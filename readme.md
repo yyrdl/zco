@@ -31,7 +31,7 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 
 与golang的defer关键字类似，`defer` 定义了一个在coroutine退出时必定会执行的操作，无论coroutine是否报错。可以使用defer定义一些退出时的清理工作，可类比C++的析构函数。
 
-like in golang,`defer` define an operation that will be executed after the coroutine exit .you can set some clear-up work in defer, or define some operation that must be executed whenever there is error in coroutine.
+like in golang,`defer` define an operation that will be executed after the coroutine exit .you can set some clear-up work in defer, or define some operation that must be executed whenever whether there is error in coroutine.
 
 * __coroutine suspension__ 
 
