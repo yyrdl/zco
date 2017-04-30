@@ -37,7 +37,7 @@ like in golang,`defer` define an operation that will be executed after the corou
 
  zco 提供的`co.all`和`co.timeLimit`俩个方法支持设置超时时间，一旦超时，未完成的任务就没有继续执行的意义， zco将会终止超时的coroutine，避免无谓的资源消耗。
  
- `co.all` and `co.timeLimit` support timeout settiing. there is no reason to execute the unfinished coroutines which will be suspended.
+ `co.all` and `co.timeLimit` support timeout settiing. there is no reason to execute the unfinished coroutines when timeout,and the coroutines  will be suspended.
   
 
 # Performance Battle
