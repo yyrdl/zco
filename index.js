@@ -19,7 +19,7 @@ var co = function (gen) {
 	hasReturn = false,
 	deferFunc = null,
 	suspended = false,
-	child_futures = [],
+	current_child_future = null,
 	hasCallback = false;
 
 	var _run_callback = function (err, value) {
@@ -59,7 +59,7 @@ var co = function (gen) {
 			var v = iterator.next(arg);
 			hasReturn = true;
 			v.done && _end(null, v.value);
-			!v.done && v.value && isZcoFuture(v.value) && (child_futures.push(v.value), v.value(next)); //support yield zco_future
+			!v.done && v.value && isZcoFuture(v.value) && (current_child_future=v.value, v.value(next)); //support yield zco_future
 		} catch (e) {
 			_end(e);
 		}
@@ -98,9 +98,8 @@ var co = function (gen) {
 				_run_defer(new Error("coroutine is suspended,maybe because of timeout."));
 			}
 			suspended = true;
-			for (var i = 0; i < child_futures.length; i++) { //suspend child future;
-				child_futures[i].__zco_suspend__();
-			}
+
+			current_child_future.__zco_suspend__();
 
 			iterator.return ();
 		}
