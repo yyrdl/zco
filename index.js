@@ -7,11 +7,9 @@ var toString = Object.prototype.toString;
 var isZcoFuture = function (future) {
 	return future && ("function" === typeof future.__zco_suspend__);
 }
-
 var isPromise = function (pro) {
 	return pro && "function" === (typeof pro.then) && "function" === (typeof pro.catch );
 }
-
 var co = function (gen) {
 
 	var iterator,
@@ -28,18 +26,18 @@ var co = function (gen) {
 			if (callback != null) {
 				callback(err, value);
 			} else if (err) {
-				throw err;//throw out if no handler privided
+				throw err; //throw out if no handler privided
 			}
 		}
 	}
 
 	var _run_defer = function (err, value) {
 		if (deferFunc != null) {
-			var _func = co(deferFunc, "__wrap_zco_defer__", err);//build defer func,and delivery error
+			var _func = co(deferFunc, "__wrap_zco_defer__", err); //build defer func,and delivery error
 			_func(function (e) {
 				if (e != null && callback === null) {
-					throw e;//error occurred in defer,throw out if no handler privided
-				} else  {
+					throw e; //error occurred in defer,throw out if no handler privided
+				} else {
 					_run_callback(e || err, value)
 				}
 			});
@@ -59,7 +57,11 @@ var co = function (gen) {
 			var v = iterator.next(arg);
 			hasReturn = true;
 			v.done && _end(null, v.value);
-			!v.done && v.value && isZcoFuture(v.value) && (current_child_future=v.value, v.value(next)); //support yield zco_future
+
+			if (!v.done && isZcoFuture(v.value)) {
+				current_child_future = v.value;
+				v.value(next); //support yield zco_future
+			}
 		} catch (e) {
 			_end(e);
 		}
@@ -99,7 +101,9 @@ var co = function (gen) {
 			}
 			suspended = true;
 
-			current_child_future.__zco_suspend__();
+			if (current_child_future != null) {
+				current_child_future.__zco_suspend__();
+			}
 
 			iterator.return ();
 		}
@@ -119,7 +123,7 @@ var co = function (gen) {
 	}
 
 	if ("[object GeneratorFunction]" === toString.call(gen)) { //todo: support other Generator implements
-		if (arguments[1]==="__wrap_zco_defer__") {
+		if (arguments[1] === "__wrap_zco_defer__") {
 			iterator = gen(next, arguments[2]);
 		} else {
 			iterator = gen(next, defer);
