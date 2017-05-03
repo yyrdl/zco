@@ -153,7 +153,7 @@ const requestGoogleMainPage = function () {
 ```
 ### Zco.timeLimit
 
-Set a time limit,suspend the coroutine and throw an error when timeout.if define some operations by `defer`,the operations will be executed.
+Set a time limit,suspend the coroutine and throw an error when timeout.if there are some operations defined by `defer`,the operations will be executed.
 But different with normal coroutine exit,if error occured in these operations,the error will be ignored.
 
 
