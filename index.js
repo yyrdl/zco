@@ -250,7 +250,7 @@ var all = function () {
 
 	future.__zco_suspend__ = function () {
 		if (!hasReturn) {
-			if (!hasReturn && timeout_handle != null) {
+			if (timeout_handle != null) {
 				clearTimeout(timeout_handle);
 			}
 			hasReturn = true;
@@ -265,13 +265,10 @@ var wrapPromise = function (pro) {
 	if (!isPromise(pro)) {
 		throw new TypeError("The arg of wrapPromise must be an instance of Promise!");
 	}
-	var hasReturn = false;
+
 	var future = function (callback) {
 		var _end = function (err, data) {
-			if (!hasReturn) {
-				hasReturn = true;
-				callback && callback(err, data);
-			}
+			callback && callback(err, data);
 		}
 		pro.then(function (data) {
 			_end(null, data);
@@ -279,9 +276,7 @@ var wrapPromise = function (pro) {
 			_end(err);
 		});
 	}
-	future.__zco_suspend__ = function () {
-		hasReturn = true;
-	}
+	future.__zco_suspend__ = function () {}
 	return future;
 }
 
@@ -330,9 +325,9 @@ var timeLimit = function (ms, future) {
 	}
 
 	t_future.__zco_suspend__ = function () {
-		if (!has_return) {
+		if (!has_return && !is_timeout) {
 			has_return = true;
-			if (!is_timeout && timeout_handle) {
+			if (timeout_handle !== null) {
 				clearTimeout(timeout_handle);
 			}
 			future.__zco_suspend__();
