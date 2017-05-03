@@ -7,9 +7,11 @@ var toString = Object.prototype.toString;
 var isZcoFuture = function (future) {
 	return future && ("function" === typeof future.__zco_suspend__);
 }
+
 var isPromise = function (pro) {
 	return pro && "function" === (typeof pro.then) && "function" === (typeof pro.catch );
 }
+
 var co = function (gen) {
 
 	var iterator,
@@ -18,15 +20,15 @@ var co = function (gen) {
 	deferFunc = null,
 	suspended = false,
 	current_child_future = null,
-	hasCallback = false;
+	hasRunCallback = false;
 
 	var _run_callback = function (err, value) {
-		if (!hasCallback) {
-			hasCallback = true;
+		if (!hasRunCallback) {
+			hasRunCallback = true;
 			if (callback != null) {
 				callback(err, value);
 			} else if (err) {
-				throw err; //throw out if no handler privided
+				throw err; //your code throws an error ,but no handler provided ,zco throws it out ,do not catch silently
 			}
 		}
 	}
@@ -36,7 +38,7 @@ var co = function (gen) {
 			var _func = co(deferFunc, "__wrap_zco_defer__", err); //build defer func,and delivery error
 			_func(function (e) {
 				if (e != null && callback === null) {
-					throw e; //error occurred in defer,throw out if no handler privided
+					throw e; //error occurred in defer,throw out if no handler provided
 				} else {
 					_run_callback(e || err, value)
 				}
@@ -53,23 +55,29 @@ var co = function (gen) {
 	}
 
 	var run = function (arg) {
+		var v = null,
+		error = null;
 		try {
-			var v = iterator.next(arg);
-			hasReturn = true;
-			v.done && _end(null, v.value);
-
-			if (!v.done && isZcoFuture(v.value)) {
-				current_child_future = v.value;
-				v.value(next); //support yield zco_future
-			}
+			v = iterator.next(arg);
 		} catch (e) {
-			_end(e);
+			error = e;
+		}
+		finally {
+
+			if (error != null) {
+				_end(error);
+			} else if (v.done) {
+				_end(null, v.value);
+			} else if (isZcoFuture(v.value)) {
+				current_child_future = v.value;
+				v.value(next);
+			}
 		}
 	}
 
 	var nextSlave = function (arg) {
 		hasReturn = false;
-		run(arg);
+		return run(arg);
 	}
 	/**
 	 * define defer
@@ -95,8 +103,8 @@ var co = function (gen) {
 
 	future.__zco_suspend__ = function () {
 		if (!suspended) {
-			if (!hasCallback) {
-				hasCallback = true;
+			if (!hasRunCallback) {
+				hasRunCallback = true;
 				_run_defer(new Error("coroutine is suspended,maybe because of timeout."));
 			}
 			suspended = true;
@@ -114,10 +122,10 @@ var co = function (gen) {
 			var arg = slice.call(arguments);
 			if (!hasReturn) { //support fake async operation,avoid error: "Generator is already running"
 				setTimeout(function () {
-					nextSlave(arg);
+					return nextSlave(arg);
 				}, 0);
 			} else {
-				nextSlave(arg);
+				return nextSlave(arg);
 			}
 		}
 	}
