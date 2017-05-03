@@ -38,17 +38,16 @@ describe("normal use", function () {
 	})
 
 	it("catch sync code error1", function (done) {
-		var future=co(function  * (next) {
-			var a = yield sync_code_error(next);
-			return 10;
-		});
+		var future = co(function  * (next) {
+				var a = yield sync_code_error(next);
+				return 10;
+			});
 		future(function (err, v) {
 			if (!err) {
 				done(new Error("err should not be undefined"))
 			} else {
 				done();
 			}
-			future.__zco_suspend__();
 		})
 	})
 
@@ -335,15 +334,13 @@ describe("co.all", function () {
 
 	it("all :catch error occurred in co", function (done) {
 		co(function  * (next) {
-			let future=co.all(co_error_func(), co_func1(1, 2, 3), "null")
-			let[err] = yield future;
+			let future = co.all(co_error_func(), co_func1(1, 2, 3), "null")
+				let[err] = yield future;
 			if (!err) {
 				done(new Error("error should be caught"));
 			} else {
 				done();
 			}
-			future.__zco_suspend__();
-			future.__zco_suspend__();
 		})()
 	})
 
@@ -378,7 +375,7 @@ describe("co.all", function () {
 			let[err, data] = yield co.all();
 			if (err) {
 				done(err);
-			} else if (data.length!=0) {
+			} else if (data.length != 0) {
 				done(new Error("if no action for co.all,data should be empty"))
 			} else {
 				done();
@@ -386,222 +383,236 @@ describe("co.all", function () {
 		})()
 	})
 
-	
-	it("all:actions(zco future) should be suspended when timeout",function (done) {
-		var varialble1=1,varialble2=2;
-		var action1=function () {
-			return co(function *(next) {
-				varialble1=11;
-				yield setTimeout(next,20);
-				varialble1=111;
+	it("all:actions(zco future) should be suspended when timeout", function (done) {
+		var varialble1 = 1,
+		varialble2 = 2;
+		var action1 = function () {
+			return co(function  * (next) {
+				varialble1 = 11;
+				yield setTimeout(next, 20);
+				varialble1 = 111;
 			})
 		}
-		var action2=function () {
+		var action2 = function () {
 			return Promise.resolve();
 		}
 
-		co(function *(next) {
-			varialble2=22;
-			let [err]=yield co.all(action1(),co.wrapPromise(action2()),10);
-			if(err){
+		co(function  * (next) {
+			varialble2 = 22;
+			let[err] = yield co.all(action1(), co.wrapPromise(action2()), 10);
+			if (err) {
 				throw err;
-			}else{
-				varialble2=222;
+			} else {
+				varialble2 = 222;
 			}
-		})((err)=>{
-			if(err&&err.message=="timeout"){
-				if(varialble1==11&&varialble2==22){
+		})((err) => {
+			if (err && err.message == "timeout") {
+				if (varialble1 == 11 && varialble2 == 22) {
 					done()
-				}else{
+				} else {
 					done(new Error());
 				}
-			}else{
+			} else {
 				done();
 			}
 		})
 	})
-	it("all:should be throwed out if no handler provided",function (done) {
-		try{
-			co.all(function(){
+	it("all:should be throwed out if no handler provided", function (done) {
+		try {
+			co.all(function () {
 				throw new Error();
 			})();
-		}catch (e){
-			if(e){
+		} catch (e) {
+			if (e) {
 				done()
-			}else{
+			} else {
 				done(new Error());
 			}
 		}
 	})
 })
 
-describe("yield Promise",function () {
-	var promise_api=function () {
-		return Promise.resolve().then(function(){
+describe("yield Promise", function () {
+	var promise_api = function () {
+		return Promise.resolve().then(function () {
 			return 6;
 		});
 	}
-	it("should support promise",function (done) {
-		co(function*(next){
-			let [err,data]=yield co.wrapPromise(promise_api());
-			if(err){
+	it("should support promise", function (done) {
+		co(function  * (next) {
+			let[err, data] = yield co.wrapPromise(promise_api());
+			if (err) {
 				done(err);
-			}else if(data!=6){
+			} else if (data != 6) {
 				done(new Error("wrong data"));
-			}else{
+			} else {
 				done();
 			}
 		})()
 	})
 
-	var promise_api_error=function(){
-		return Promise.resolve().then(function(){
+	var promise_api_error = function () {
+		return Promise.resolve().then(function () {
 			throw new Error();
 		})
 	}
-	
-	it("should catch error throwed by Promise",function (done) {
-		co(function*(next){
-			let [err]=yield co.wrapPromise(promise_api_error());
-			if(!err){
+
+	it("should catch error throwed by Promise", function (done) {
+		co(function  * (next) {
+			let[err] = yield co.wrapPromise(promise_api_error());
+			if (!err) {
 				done(new Error());
-			}else{
+			} else {
 				done();
 			}
 		})()
 	})
 
-	it("should throw error when not a Promise",function(done){
-		co(function*(next){
-           yield co.wrapPromise("");
-		})((err)=>{
-			if(!err){
+	it("should throw error when not a Promise", function (done) {
+		co(function  * (next) {
+			yield co.wrapPromise("");
+		})((err) => {
+			if (!err) {
 				done(new Error("should throw error"));
-			}else{
+			} else {
 				done();
 			}
 		})
 	})
 })
 
-describe("timeLimit",function () {
-	it("should throw timeout",function (done) {
-		co.timeLimit(2*10,co(function *(next) {
-			yield setTimeout(next,5*10);
-		}))((err)=>{
-			if(err&&err.message=="timeout"){
+describe("timeLimit", function () {
+	it("should throw timeout", function (done) {
+		co.timeLimit(2 * 10, co(function  * (next) {
+				yield setTimeout(next, 5 * 10);
+			}))((err) => {
+			if (err && err.message == "timeout") {
 				done()
-			}else{
+			} else {
 				done(new Error());
 			}
 		})
 	});
-	
-	it("should be suspended when timeout",function (done) {
-		var varialble1=1,varialble2=2;
-		var func1=function () {
-			return co(function *(next) {
-                varialble1=11;
-				yield setTimeout(next,2*10);
-				varialble1=111;
+
+	it("should be suspended when timeout", function (done) {
+		var varialble1 = 1,
+		varialble2 = 2;
+		var func1 = function () {
+			return co(function  * (next, defer) {
+				defer(function  * () {})
+				varialble1 = 11;
+				yield setTimeout(next, 2 * 10);
+				varialble1 = 111;
 			})
 		}
-        var future=co(function *(next) {
-			varialble2=22;
-			yield func1();
-			varialble2=222;
-		});
+		var future = co(function  * (next) {
+				varialble2 = 22;
+				yield func1();
+				varialble2 = 222;
+			});
 
-		co.timeLimit(1*10,future)((err)=>{
+		co.timeLimit(1 * 10, future)((err) => {
 			setTimeout(function () {
-				if(err&&err.message=="timeout"){
-					if(varialble1!=11||varialble2!=22){
+				if (err && err.message == "timeout") {
+					if (varialble1 != 11 || varialble2 != 22) {
 						done(new Error());
-					}else{
+					} else {
 						done();
 					}
-				}else{
+				} else {
 					done(new Error());
 				}
-				future.__zco_suspend__();
-				future.__zco_suspend__();
-			},3*10);
+			}, 3 * 10);
 		})
 	})
-	it("should throw error when wrong timeout setting1",function (done) {
-		try{
-			co.timeLimit("l",co(function*(){}))()
-		}catch (e){
-			if(e){
+	it("should throw error when wrong timeout setting1", function (done) {
+		try {
+			co.timeLimit("l", co(function  * () {}))()
+		} catch (e) {
+			if (e) {
 				done()
-			}else{
+			} else {
 				done(new Error());
 			}
 		}
 	})
 
-	it("should throw error when wrong timeout setting2",function (done) {
-		try{
-			co.timeLimit(-100,co(function*(){}))()
-		}catch (e){
-			if(e){
+	it("should throw error when wrong timeout setting2", function (done) {
+		try {
+			co.timeLimit(-100, co(function  * () {}))()
+		} catch (e) {
+			if (e) {
 				done()
-			}else{
+			} else {
 				done(new Error());
 			}
 		}
 	})
 
-	it("should throw error when not zco future",function (done) {
-		try{
-			co.timeLimit(100,function(){})()
-		}catch (e){
-			if(e){
+	it("should throw error when not zco future", function (done) {
+		try {
+			co.timeLimit(100, function () {})()
+		} catch (e) {
+			if (e) {
 				done()
-			}else{
+			} else {
 				done(new Error());
 			}
 		}
 	})
 
-	it("not timeout branch",function(done){
-		var future=co.timeLimit(10*1000,co(function *() {
-			return 1;
-		}));
+	it("not timeout branch", function (done) {
+		var future = co.timeLimit(10 * 1000, co(function  * () {
+					return 1;
+				}));
 
-		future((err)=>{
-			if(err){
+		future((err) => {
+			if (err) {
 				done(err);
-			}else{
+			} else {
 				done();
 			}
-			future.__zco_suspend__();
 		})
 	})
 
-	it("co.all timeout case",function (done) {
-		co.timeLimit(10,co(function *(next) {
-			yield co.all(function(cb){
-				setTimeout(cb,10*1000);
-			});
-		}))((err)=>{
-			if(err){
+	it("co.all timeout case", function (done) {
+		co.timeLimit(10, co(function  * (next) {
+				yield co.all(function (cb) {
+					setTimeout(cb, 10 * 1000);
+				});
+			}))((err) => {
+			if (err) {
 				done();
-			}else{
+			} else {
 				done(new Error());
 			}
 		});
 	})
-   
-	it("co.timeLimit self timeout case",function(done){
-		co.timeLimit(10,co.timeLimit(3*10,co(function*(next){
-			yield setTimeout(next,2*10);
-		})))((err)=>{
-			if(err){
+
+	it("co.timeLimit self timeout case", function (done) {
+		co.timeLimit(10, co.timeLimit(3 * 10, co(function  * (next) {
+					yield setTimeout(next, 2 * 10);
+				})))((err) => {
+			if (err) {
 				done();
-			}else{
+			} else {
 				done(new Error());
 			}
 		})
+	});
+	it("co.timeLimit error should be thrown out when no handler", function (done) {
+		var error=null;
+		try {
+			co.timeLimit(100, co(function  * () {
+					throw new Error();
+				}))()
+		} catch (e) {
+			error=e;
+		}
+	    if(error!=null){
+			done();
+		}else{
+			done(new Error());
+		}
 	})
 })
