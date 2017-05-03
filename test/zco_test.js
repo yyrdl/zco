@@ -374,12 +374,12 @@ describe("co.all", function () {
 	})
 
 	it("all :no action", function (done) {
-		co(function  * (next) {
+		co(function  * () {
 			let[err, data] = yield co.all();
 			if (err) {
 				done(err);
-			} else if (data != undefined) {
-				done(new Error("data should be undefined"))
+			} else if (data.length!=0) {
+				done(new Error("if no action for co.all,data should be empty"))
 			} else {
 				done();
 			}
