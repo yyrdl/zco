@@ -236,16 +236,18 @@ var all = function () {
 
 	var _end = function (error, result, is_timeout) {
 
+		if(hasReturn){
+			return ;
+		}
+
+		hasReturn = true;
+
 		if (!is_timeout && timeout_handle !== null) {
 
 			clearTimeout(timeout_handle);
 
 		}
-        if(hasReturn){
-			return ;
-		}
 
-		hasReturn = true;
 
 		if (is_timeout) { //self timeout ,suspend zco futures
 			_suspend_zco_future();
@@ -333,9 +335,12 @@ var all = function () {
 	};
 
 	future.__suspend__ = function () {
+
         if(hasReturn){
+
 			return ;
 		}
+
 		hasReturn = true;
 
 		if (timeout_handle != null) {
