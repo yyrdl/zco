@@ -7,14 +7,13 @@ var toString = Object.prototype.toString;
 var isZcoFuture = function (future) {
 	return future && ("function" === typeof future.__suspend__);
 }
-
 var isPromise = function (pro) {
 	return (pro && "function" === (typeof pro.then) && "function" === (typeof pro.catch ));
 }
-
+		
 var co = function (gen) {
 
-	var iterator,
+	var iterator=null,
 	callback = null,
 	hasReturn = false,
 	deferFunc = null,
@@ -233,7 +232,7 @@ var all = function () {
 		}
 	}
 
-	var _end = function (err, result, is_timeout) {
+	var _end = function (error, result, is_timeout) {
 
 		if (!is_timeout && timeout_handle !== null) {
 
@@ -250,9 +249,9 @@ var all = function () {
 			}
 
 			if (cb !== null) {
-				cb(err, result);
-			} else if (err) {
-				throw err;
+				return cb(error, result);
+			} else if (error) {
+				throw error;//something error ,or timeout
 			}
 		}
 	}
@@ -283,36 +282,28 @@ var all = function () {
 		for (var i = 0; i < actions.length; i++) {
 
 			(function (index) {
-				try {
-
-					var _action = actions[index];
-
+				var _action = actions[index];
+				if (isZcoFuture(_action)) {
 					_action(function () {
-
 						var return_value = slice.call(arguments);
-
-						if (isZcoFuture(_action)) {
-
-							if (return_value[0]) {
-
-								return _end(return_value[0], null, false);
-							}
-
-							result[index] = return_value[1];
-
-						} else {
-
-							result[index] = return_value;
-
+						if (return_value[0]) {
+							return _end(return_value[0], null, false);
 						}
-
+						result[index] = return_value[1];
 						check();
-
 					});
-
-				} catch (e) {
-					_end(e, null, false);
+				} else {
+					try {
+						_action(function () {
+							var return_value = slice.call(arguments);
+							result[index] = return_value;
+							check();
+						});
+					} catch (e) {
+						_end(e, null, false);
+					}
 				}
+
 			})(i)
 		}
 
@@ -320,7 +311,7 @@ var all = function () {
 
 			timeout_handle = setTimeout(function () {
 					_end(new Error("timeout"), null, true);
-				}, timeout)
+			}, timeout)
 		}
 
 	}

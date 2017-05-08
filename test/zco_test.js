@@ -417,11 +417,24 @@ describe("co.all", function () {
 			}
 		})
 	})
-	it("all:should be throwed out if no handler provided", function (done) {
+	it("all:should be thrown out if no handler provided", function (done) {
 		try {
 			co.all(function () {
 				throw new Error();
 			})();
+		} catch (e) {
+			if (e) {
+				done()
+			} else {
+				done(new Error());
+			}
+		}
+	})
+	it("all:should be thrown out if no handler provided (zco future)", function (done) {
+		try {
+			co.all(co(function *() {
+				throw  new Error()
+			}))();
 		} catch (e) {
 			if (e) {
 				done()
