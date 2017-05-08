@@ -38,27 +38,28 @@ var co = function (gen) {
 
 	var _end = function (e, v) {
 
-		if (!hasRunCallback) {
+        if(hasRunCallback){
+			return;
+		}
 
-			hasRunCallback = true;
+		hasRunCallback = true;
 
-			if (deferFunc != null) {
+		if (deferFunc != null) {
 
-				var _func = _make_defer_func(e);
+			var _func = _make_defer_func(e);
 
-				return _func(function (ee) {
-					if (ee != null && callback === null) {
-						throw ee; //error occurred in defer,throw out if no handler provided
-					} else {
-						_run_callback(e || ee, v)
-					}
-				});
-
-			}
-
-			return _run_callback(e, v);
+			return _func(function (ee) {
+				if (ee != null && callback === null) {
+					throw ee; //error occurred in defer,throw out if no handler provided
+				} else {
+					_run_callback(e || ee, v)
+				}
+			});
 
 		}
+
+		return _run_callback(e, v);
+
 	}
 
 	var run = function (arg) {
@@ -119,54 +120,55 @@ var co = function (gen) {
 	}
 
 	future.__suspend__ = function () {
+        if(hasRunCallback || suspended){
+			return;
+		}
 
-		if (!hasRunCallback && !suspended) {
+		suspended = true;
 
-			suspended = true;
+		hasRunCallback = true;
 
-			hasRunCallback = true;
+		if (deferFunc != null) {
 
-			if (deferFunc != null) {
-
-				var _func = _make_defer_func(new Error("coroutine is suspended,maybe because of timeout."));
-
-				/**
-				 * run defer ,ignore the error occurred in defer
-				 * */
-				_func(function () {});
-			}
+			var _func = _make_defer_func(new Error("coroutine is suspended,maybe because of timeout."));
 
 			/**
-			 * suspend child future
+			 * run defer ,ignore the error occurred in defer
 			 * */
-
-			if (current_child_future != null) {
-				current_child_future.__suspend__();
-			}
-
-			iterator.return ();
+			_func(function () {});
 		}
+
+		/**
+		 * suspend child future
+		 * */
+
+		if (current_child_future != null) {
+			current_child_future.__suspend__();
+		}
+
+		iterator.return ();
+
 	}
 
 	var next = function () {
+        if(suspended){
+			return ;
+		}
 
-		if (!suspended) {
+		var arg = slice.call(arguments);
 
-			var arg = slice.call(arguments);
+		if (!hasReturn) { //support fake async operation,avoid error: "Generator is already running"
 
-			if (!hasReturn) { //support fake async operation,avoid error: "Generator is already running"
-
-				setTimeout(function () {
-
-					nextSlave(arg);
-
-				}, 0);
-
-			} else {
+			setTimeout(function () {
 
 				nextSlave(arg);
 
-			}
+			}, 0);
+
+		} else {
+
+			nextSlave(arg);
+
 		}
 	}
 
@@ -239,21 +241,24 @@ var all = function () {
 			clearTimeout(timeout_handle);
 
 		}
-
-		if (!hasReturn) {
-
-			hasReturn = true;
-
-			if (is_timeout) { //self timeout ,suspend zco futures
-				_suspend_zco_future();
-			}
-
-			if (cb !== null) {
-				return cb(error, result);
-			} else if (error) {
-				throw error;//something error ,or timeout
-			}
+        if(hasReturn){
+			return ;
 		}
+
+		hasReturn = true;
+
+		if (is_timeout) { //self timeout ,suspend zco futures
+			_suspend_zco_future();
+		}
+
+		if (cb !== null) {
+			return cb(error, result);
+		}
+
+		if(error) {
+			throw error;//something error ,or timeout
+		}
+
 	}
 
 	var _run = function () {
@@ -328,19 +333,18 @@ var all = function () {
 	};
 
 	future.__suspend__ = function () {
-
-		if (!hasReturn) {
-
-			hasReturn = true;
-
-			if (timeout_handle != null) {
-
-				clearTimeout(timeout_handle);
-
-			}
-
-			_suspend_zco_future();
+        if(hasReturn){
+			return ;
 		}
+		hasReturn = true;
+
+		if (timeout_handle != null) {
+
+			clearTimeout(timeout_handle);
+
+		}
+
+		_suspend_zco_future();
 	}
 
 	return future;
@@ -386,22 +390,26 @@ var timeLimit = function (ms, future) {
 	}
 
 	var cb_slave = function (err, result) {
-		if (!has_return) {
-			has_return = true;
+		if(has_return){
+			return ;
+		}
 
-			if (!is_timeout && timeout_handle != null) {
-				clearTimeout(timeout_handle);
-			}
+		has_return = true;
 
-			if (is_timeout) { //if timeout,suspend the operation
-				future.__suspend__();
-			}
+		if (!is_timeout && timeout_handle != null) {
+			clearTimeout(timeout_handle);
+		}
 
-			if (callback) {
-				callback(err, result);
-			} else if (err) {
-				throw err;
-			}
+		if (is_timeout) { //if timeout,suspend the operation
+			future.__suspend__();
+		}
+
+		if (callback) {
+			return callback(err, result);
+		}
+
+		if (err) {
+			throw err;
 		}
 	}
 
@@ -422,19 +430,19 @@ var timeLimit = function (ms, future) {
 	}
 
 	t_future.__suspend__ = function () {
-
-		if (!has_return) {
-
-			has_return = true;
-
-			if (!is_timeout && timeout_handle !== null) {
-
-				clearTimeout(timeout_handle);
-
-			}
-
-			future.__suspend__();
+		if(has_return){
+			return ;
 		}
+
+		has_return = true;
+
+		if (!is_timeout && timeout_handle !== null) {
+
+			clearTimeout(timeout_handle);
+
+		}
+
+		future.__suspend__();
 	}
 
 	return t_future;
