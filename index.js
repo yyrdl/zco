@@ -409,7 +409,7 @@ var timeLimit = function (ms, future) {
 
 	}
 	/**
-	 * make timeout error here ,get the current error stack,reset the top frame of the stack to where  the `all` function is called
+	 * make timeout error here ,get the current error stack,reset the top frame of the stack to where  the `timeLimit` function is called
 	 */
 	var timeout_error = makeError("timeout");
 
