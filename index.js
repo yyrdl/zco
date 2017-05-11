@@ -7,13 +7,24 @@ var toString = Object.prototype.toString;
 var isZcoFuture = function (future) {
 	return future && ("function" === typeof future.__suspend__);
 }
+
 var isPromise = function (pro) {
-	return (pro && "function" === (typeof pro.then) && "function" === (typeof pro.catch ));
+	return pro && ("function" === (typeof pro.then)) && ("function" === (typeof pro.catch ));
 }
-		
+
+var makeError = function (msg) {
+	var error = new Error(msg);
+	var stack = error.stack;
+	var first_index = stack.indexOf("at");
+	var msg = stack.substring(0, first_index);
+	stack = stack.substring(stack.indexOf("at", first_index + 1), stack.length);
+	stack = stack.substring(stack.indexOf("at", 1), stack.length);
+	error.stack = msg + stack;
+	return error;
+}
 var co = function (gen) {
 
-	var iterator=null,
+	var iterator = null,
 	callback = null,
 	hasReturn = false,
 	deferFunc = null,
@@ -38,7 +49,7 @@ var co = function (gen) {
 
 	var _end = function (e, v) {
 
-        if(hasRunCallback){
+		if (hasRunCallback) {
 			return;
 		}
 
@@ -120,7 +131,7 @@ var co = function (gen) {
 	}
 
 	future.__suspend__ = function () {
-        if(hasRunCallback || suspended){
+		if (hasRunCallback || suspended) {
 			return;
 		}
 
@@ -151,8 +162,8 @@ var co = function (gen) {
 	}
 
 	var next = function () {
-        if(suspended){
-			return ;
+		if (suspended) {
+			return;
 		}
 
 		var arg = slice.call(arguments);
@@ -202,6 +213,11 @@ var all = function () {
 	timeout = null,
 	args = slice.call(arguments);
 
+	/**
+	 * make timeout error here ,get the current error stack,reset the top frame of the stack to where  the `all` function is called
+	 */
+	var timeout_error = makeError("timeout");
+
 	for (var i = 0; i < args.length; i++) {
 
 		if ("function" == typeof args[i]) {
@@ -236,8 +252,8 @@ var all = function () {
 
 	var _end = function (error, result, is_timeout) {
 
-		if(hasReturn){
-			return ;
+		if (hasReturn) {
+			return;
 		}
 
 		hasReturn = true;
@@ -248,7 +264,6 @@ var all = function () {
 
 		}
 
-
 		if (is_timeout) { //self timeout ,suspend zco futures
 			_suspend_zco_future();
 		}
@@ -257,8 +272,8 @@ var all = function () {
 			return cb(error, result);
 		}
 
-		if(error) {
-			throw error;//something error ,or timeout
+		if (error) {
+			throw error; //something error ,or timeout
 		}
 
 	}
@@ -317,8 +332,8 @@ var all = function () {
 		if (timeout !== null) {
 
 			timeout_handle = setTimeout(function () {
-					_end(new Error("timeout"), null, true);
-			}, timeout)
+					_end(timeout_error, null, true);
+				}, timeout)
 		}
 
 	}
@@ -336,9 +351,9 @@ var all = function () {
 
 	future.__suspend__ = function () {
 
-        if(hasReturn){
+		if (hasReturn) {
 
-			return ;
+			return;
 		}
 
 		hasReturn = true;
@@ -393,10 +408,14 @@ var timeLimit = function (ms, future) {
 		throw new TypeError("You can only set timeout of zco future(value returned by zco)");
 
 	}
+	/**
+	 * make timeout error here ,get the current error stack,reset the top frame of the stack to where  the `all` function is called
+	 */
+	var timeout_error = makeError("timeout");
 
 	var cb_slave = function (err, result) {
-		if(has_return){
-			return ;
+		if (has_return) {
+			return;
 		}
 
 		has_return = true;
@@ -427,7 +446,7 @@ var timeLimit = function (ms, future) {
 
 				is_timeout = true;
 
-				cb_slave(new Error("timeout"));
+				cb_slave(timeout_error);
 
 			}, ms);
 
@@ -435,8 +454,8 @@ var timeLimit = function (ms, future) {
 	}
 
 	t_future.__suspend__ = function () {
-		if(has_return){
-			return ;
+		if (has_return) {
+			return;
 		}
 
 		has_return = true;
