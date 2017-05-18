@@ -14,14 +14,17 @@ var isPromise = function (pro) {
 
 var makeError = function (msg) {
 	var error = new Error(msg);
+	error.name="TimeoutError";
+	var separator="\n    at";
 	var stack = error.stack;
-	var first_index = stack.indexOf("at");
+	var first_index = stack.indexOf(separator);
 	var msg = stack.substring(0, first_index);
-	stack = stack.substring(stack.indexOf("at", first_index + 1), stack.length);
-	stack = stack.substring(stack.indexOf("at", 1), stack.length);
+	stack = stack.substring(stack.indexOf(separator, first_index + 1), stack.length);
+	stack = stack.substring(stack.indexOf(separator, 1), stack.length);
 	error.stack = msg + stack;
 	return error;
 }
+
 var co = function (gen) {
 
 	var iterator = null,
