@@ -7,25 +7,27 @@ var toString = Object.prototype.toString;
 var isZcoFuture = function (future) {
 	return future && ("function" === typeof future.__suspend__);
 }
-
 var isPromise = function (pro) {
 	return pro && ("function" === (typeof pro.then)) && ("function" === (typeof pro.catch ));
 }
-
 var makeError = function (msg) {
 	var error = new Error(msg);
-	error.name="TimeoutError";
-	var separator="\n    at";
-	var stack = error.stack;
+	error.name = "TimeoutError";
+	var separator = "\n    at";
+	var stack = error.stack || " ";
 	var first_index = stack.indexOf(separator);
 	var msg = stack.substring(0, first_index);
-	stack = stack.substring(stack.indexOf(separator, first_index + 1), stack.length);
-	stack = stack.substring(stack.indexOf(separator, 1), stack.length);
+	first_index = stack.indexOf(separator, first_index + 1);
+	first_index = stack.indexOf(separator, first_index + 1);
+	stack = stack.substring(first_index, stack.length);
 	error.stack = msg + stack;
 	return error;
 }
 
-var co = function (gen) {
+var WRAP_DEFER_MODEL = "__zco_d_" + Date.now();
+var BRIEF_MODEl = "__zco_b_" + Date.now();
+
+var zco_core = function (gen, model) {
 
 	var iterator = null,
 	callback = null,
@@ -33,21 +35,22 @@ var co = function (gen) {
 	deferFunc = null,
 	suspended = false,
 	current_child_future = null,
-	hasRunCallback = false;
+	hasRunCallback = false,
+	internal = false;
 
-	var _run_callback = function (err, value) {
+	var _run_callback = function (error, value) {
 
 		if (callback != null) {
-			return callback(err, value);
+			return callback(error, value);
 		}
 
-		if (err) {
-			throw err; //your code throws an error ,but no handler provided ,zco throws it out ,do not catch silently
+		if (error) {
+			throw error; //your code throws an error ,but no handler provided ,zco throws it out ,do not catch silently
 		}
 	}
 
-	var _make_defer_func = function (err) {
-		return co(deferFunc, "__wrap_zco_defer__", err); //build defer func,and delivery error
+	var _make_defer_func = function (error) {
+		return zco_core(deferFunc, WRAP_DEFER_MODEL, error); //build defer func,and delivery error
 	}
 
 	var _end = function (e, v) {
@@ -98,6 +101,7 @@ var co = function (gen) {
 
 		if (isZcoFuture(v.value)) {
 			current_child_future = v.value;
+			internal = true;
 			return v.value(next);
 		}
 
@@ -171,6 +175,15 @@ var co = function (gen) {
 
 		var arg = slice.call(arguments);
 
+		if (model === BRIEF_MODEl && true === internal) {
+			if (arg[0] !== null) {
+				return _end(arg[0]);
+			}
+			arg = arg[1];
+		}
+
+		internal = false;
+
 		if (!hasReturn) { //support fake async operation,avoid error: "Generator is already running"
 
 			setTimeout(function () {
@@ -188,7 +201,7 @@ var co = function (gen) {
 
 	if ("[object GeneratorFunction]" === toString.call(gen)) { //todo: support other Generator implements
 
-		if (arguments[1] === "__wrap_zco_defer__") {
+		if (model === WRAP_DEFER_MODEL) {
 
 			iterator = gen(next, arguments[2]);
 
@@ -474,6 +487,14 @@ var timeLimit = function (ms, future) {
 
 	return t_future;
 
+}
+
+var co = function (gen) {
+	return zco_core(gen);
+}
+
+co.brief = function (gen) {
+	return zco_core(gen, BRIEF_MODEl);
 }
 
 co.all = all;
