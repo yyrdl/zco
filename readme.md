@@ -230,61 +230,62 @@ co(function  * (next) {
 
 ```
 
-### Zco nest 
-
-A demo that search github projects rank by star.
-
+### nest useage 
 
 ```javascript
 const co = require("zco");
-const request = require("request");
-const cheerio = require("cheerio");
 
-const SEARCH_KEY = "generator based control flow";
-
-//search project on github rank by stars;
-
-const searchGithubRankByStars = function (key, maxPage = 1) {
-	return co(function  * (next) {
-		key = key.split(/\s/g).join("+");
-		let list = [];
-		for (let i = 0; i < maxPage; i++) {
-			let url = "https://github.com/search?o=desc&p=" + (i + 1) + "&q=" + key + "&s=stars&type=Repositories&utf8=%E2%9C%93&_pjax=%23js-pjax-container";
-
-			let[err, response, body] = yield request(url, next);//start search
-			if (err) {
-				throw err;
-			}
-
-			//parse
-			let $ = cheerio.load(body.toString());
-			$(".v-align-middle").each((_,item) => {
-				list.push({
-					"name" : $(item).text(),
-					"url" : "https://github.com" + $(item).attr("href")
-				});
-			});
-		}
-		return list;
-	});
+const co_func=function(i){
+  return co(function*(){
+     return 10*i;
+  })
 }
 
-co(function  * (next) {
-	let[err, list] = yield searchGithubRankByStars(SEARCH_KEY, 2);
-	if (err) {
-		throw err;
+
+co(function  * () {
+	let [err1, result1] = yield co_func(1);
+	if (err1) {
+		throw err1;
 	}
-	return list;
-})((err, list) => {
+
+	let [err2, result2] = yield co_func(2);
+    if (err2) {
+   		throw err2;
+   	}
+
+	return result1+result2;
+})((err, result) => {
 	if (err) {
 		console.log(err);
 	} else {
-		console.log(list);
+		console.log(result);
 	}
 })
 
+//or
+
+co.brief(function*(){
+
+   let result1 = yield co_func(1);
+
+   let result2 = yield co_func(2);
+
+   return result1+result2;
+})((err,result)=>{
+    if (err) {//deal with error at end
+   		console.log(err);
+   	} else {
+   		console.log(result);
+   	}
+});
+
 
 ```
+
+zco suppose it's  possible that all operations will go wrong, so the first return-value always be error,the second one is the exact result returned by the function, because  error in different place has different meaning.
+
+But sometimes ,we don't want to dealing  with error everywhere ,then we use `co.brief`
+
 
 ### Catch Error
  
@@ -337,30 +338,30 @@ co(function  * (next) {
     results for 20000 parallel executions, 1 ms per I/O op ,2017-05-03
 
     name                                                      timecost(ms)     memery(mb)       
-	callback.js                                               118              31.1640625       
-	async-neo@1.8.2.js                                        182              48.58203125      
-	promise_bluebird@2.11.0.js                                723              88.55859375      
-	co_zco_yyrdl@1.2.8.js                                     996              84.04296875      
-	async_caolan@1.5.2.js                                     1162             122.42578125     
-	co_when_generator_cujojs@3.7.8.js                         1229             118.27734375     
-	co_tj_with_bluebird_promise@4.6.0.js                      1422             116.88671875     
-	co_when_generator_cujojs_with_bluebird@3.7.8.js           1436             139.03125        
-	promise_native.js                                         1521             170.59765625     
-	async_await_es7_with_native_promise.js                    1542             169.6015625      
-	co_when_generator_cujojs_with_native_promise@3.7.8.js     1775             168.81640625     
-	co_tj_with_native_promise@4.6.0.js                        1823             161.21484375     
-	async_await_es7_with_bluebird_promise.js                  1988             197.8046875      
-	co_coroutine_bluebird@2.11.0.js                           4469             227.10546875     
-      
+	callback.js                                               93               30.32421875
+    async-neo@1.8.2.js                                        147              48.6328125
+    promise_bluebird@2.11.0.js                                563              92.3984375
+    co_zco_yyrdl@1.3.1.js                                     608              86.37890625
+    async_caolan@1.5.2.js                                     732              122.61328125
+    co_when_generator_cujojs@3.7.8.js                         760              116.640625
+    co_tj_with_bluebird_promise@4.6.0.js                      936              123.2265625
+    co_when_generator_cujojs_with_bluebird@3.7.8.js           946              130.99609375
+    async_await_es7_with_native_promise.js                    1029             166.55078125
+    promise_native.js                                         1051             177.30078125
+    co_tj_with_native_promise@4.6.0.js                        1137             163.296875
+    co_when_generator_cujojs_with_native_promise@3.7.8.js     1158             169.50390625
+    async_await_es7_with_bluebird_promise.js                  1289             197.93359375
+    co_coroutine_bluebird@2.11.0.js                           3972             244.515625
 
-    
+
+
 
 
     Platform info:
     Windows_NT 10.0.14393 x64
     Node.JS 7.7.3
     V8 5.5.372.41
-    Intel(R) Core(TM) i5-3210U CPU @ 2.50GHz × 4
+    Intel(R) Core(TM) i5-5200U CPU @ 2.20GHz × 4
 	
 	
 	

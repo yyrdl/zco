@@ -24,8 +24,8 @@ var makeError = function (msg) {
 	return error;
 }
 
-var WRAP_DEFER_MODEL = "__zco_d_" + Date.now();
-var BRIEF_MODEl = "__zco_b_" + Date.now();
+var WRAP_DEFER_MODEL = 1;
+var BRIEF_MODEl = 2;
 
 var zco_core = function (gen, model) {
 
@@ -53,7 +53,7 @@ var zco_core = function (gen, model) {
 		return zco_core(deferFunc, WRAP_DEFER_MODEL, error); //build defer func,and delivery error
 	}
 
-	var _end = function (e, v) {
+	var _return = function (e, v) {
 
 		if (hasRunCallback) {
 			return;
@@ -92,11 +92,11 @@ var zco_core = function (gen, model) {
 		}
 
 		if (error != null) {
-			return _end(error);
+			return _return(error);
 		}
 
 		if (v.done) {
-			return _end(null, v.value);
+			return _return(null, v.value);
 		}
 
 		if (isZcoFuture(v.value)) {
@@ -137,6 +137,9 @@ var zco_core = function (gen, model) {
 		run();
 	}
 
+	/**
+	 * define 'suspend' method
+	 * */
 	future.__suspend__ = function () {
 		if (hasRunCallback || suspended) {
 			return;
@@ -177,7 +180,7 @@ var zco_core = function (gen, model) {
 
 		if (model === BRIEF_MODEl && true === internal) {
 			if (arg[0] !== null) {
-				return _end(arg[0]);
+				return _return(arg[0]);
 			}
 			arg = arg[1];
 		}
@@ -269,7 +272,7 @@ var all = function () {
 	var _end = function (error, result, is_timeout) {
 
 		if (hasReturn) {
-			return;
+			return ;
 		}
 
 		hasReturn = true;
@@ -280,7 +283,7 @@ var all = function () {
 
 		}
 
-		if (is_timeout) { //self timeout ,suspend zco futures
+		if (is_timeout || null!== error) { //self timeout or error occurred ,suspend zco futures
 			_suspend_zco_future();
 		}
 
@@ -322,12 +325,11 @@ var all = function () {
 			(function (index) {
 				var _action = actions[index];
 				if (isZcoFuture(_action)) {
-					_action(function () {
-						var return_value = slice.call(arguments);
-						if (return_value[0]) {
-							return _end(return_value[0], null, false);
+					_action(function (err,data) {
+						if (err) {
+							return _end(err, null, false);
 						}
-						result[index] = return_value[1];
+						result[index] = data;
 						check();
 					});
 				} else {

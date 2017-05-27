@@ -13,33 +13,31 @@
 > __什么是协程?__  协程是计算机程序组件，他允许我们写同步风格的但却是异步执行的代码。 
 
 
-#  内容目录
-
-*  [特别功能](#special-features)
-*  [性能测试](#performance-battle)
-*  [安装](#useage)
-*  [例子](#example)
-*  [同Promise, ES7 async/await，还有TJ的CO做比较](https://github.com/yyrdl/zco/blob/master/readmes/compare.md)
 
 
-# Special Features
+#  特别功能
+
+* __深度支持回调__
+
+  node.js里面大部分原生接口都是基于回调实现的，比如文件模块'fs'，zco可以轻松地和这些模块协作，不需要任何包装。
 
 * __defer__  
 
-与golang的defer关键字类似，`defer` 定义了一个在coroutine退出时必定会执行的操作，无论coroutine是否报错。可以使用defer定义一些退出时的清理工作，可类比C++的析构函数。
+defer` 定义了一个在协程退出时必定会执行的操作，无论协程是否报错。可以使用defer定义一些退出时的清理工作，可类比C++的析构函数或是golang的defer关键字。
 
 
-* __coroutine suspension__ 
+* __协程超时挂起__
 
- zco 提供的`co.all`和`co.timeLimit`两个方法支持设置超时时间，一旦超时，未完成的任务就没有继续执行的意义， zco将会终止超时的coroutine，避免无谓的资源消耗。
+ zco 提供的`co.all`和`co.timeLimit`两个方法支持设置超时时间。超时时zco将终止执行，避免无意义的资源消耗.详细见`co.timeLimit`的示例代码。简单理解就是一旦操作超时，
+ 后续未执行的操作都不会得到执行。
  
-# Useage
+# 安装
 
 	npm install zco
 
-# Example
+# 例子们
 
-### Simple Useage
+### 简单用法
 
 ```javascript
 
@@ -52,8 +50,10 @@ const fake_async_func = function (callback) { //支持伪异步
 
 co(function  * (next) {
 
-	let[err, response, page] = yield request("http://www.google.com", next);	
-    //do something ....
+     //请求baidu主页
+	let[err, response, page] = yield request("https://www.baidu.com", next);//next作为request模块的回调函数传入,
+	//err,response,page是request模块传给回调函数的参数
+     //do something ....
 	
 	let[err2, msg] = yield fake_async_func(next);
 	console.log(err2); //null
@@ -61,9 +61,14 @@ co(function  * (next) {
 })()
 
 ```
+
+`co`方法接收一个`GeneratorFunction`,返回一个zco的`future`,`future`是一个`Function`实例，`future`接收一个函数作为他的参数，这个函数称之为zco的返回处理句柄,即`handler`。
+
 ### Defer
 
-一个简单使用defer的例子:定义一个并发锁，控制访问谷歌首页的并发量是5，为保证锁被释放，在defer里调用`mutex.unLock` 方法.
+一个实用的使用`defer`的例子:定义一个并发锁，控制访问百度首页的并发量是5，为保证锁被释放，在defer里调用`mutex.unLock` 方法.
+
+>锁被占用以后必须在某处被释放，否则会造成死锁。然而由于无法确定代码是否会异常，导致释放锁的操作没被执行，defer提供了一个无论如何都会执行的保证。
 
  
 ```javascript
@@ -106,9 +111,9 @@ const ConcurrentLockFactory = {
 const mutex = ConcurrentLockFactory.new(5);
 
  
-// 下面这个方法将确保最大并发量是5，即使同时调用这个方法10000次。
+// 下面这个方法将确保最大并发量是5，即使在同一时刻调用这个方法10000次。
 
-const requestGoogleMainPage = function () {
+const requestBaidu = function () {
 
 	return co(function  * (next, defer) {
 	
@@ -126,19 +131,19 @@ const requestGoogleMainPage = function () {
 		
 		mutex.lock();//持有锁
 		
-		let[err, res, body] = yield request.get('http://google.com', next);
+		let[err, res, body] = yield request.get('https://www.baidu.com', next);
 		if (err) {
 			throw err;
 		}
-		return body;
+		return body;//在这个return 执行之后，或者异常抛出之后，defer里的操作将被执行
 	});
 }
 
 ```
-### Zco.timeLimit
+### zco.timeLimit
 
- 
-为一个操作设置最大时间限制，超时未完成则挂起并抛出超时错误.如果被挂起的协程有使用`defer`，那么被挂起时会同时运行`defer`定义的操作。
+
+该方法为一个操作设置最大时间限制，超时未完成则挂起并抛出超时错误.如果被挂起的协程有使用`defer`，那么被挂起时会同时运行`defer`定义的操作。
 
 与正常退出执行`defer`定义的操作不同，如果`defer`定义的操作出现异常，那么异常将被忽略，但若是正常退出，则异常会被传递给最终的`handler`，
 
@@ -188,7 +193,7 @@ setTimeout(function () {
 
 ```
 
-### Zco.all
+### zco.all
 
 
 
@@ -217,86 +222,67 @@ co(function  * (next) {
 
 ```
 
-### Zco nest
-
-zco 嵌套
+### 嵌套使用
 
 
-一个搜索github的例子，搜索结果按star的多少排序
 
 ```javascript
 const co = require("zco");
-const request = require("request");
-const cheerio = require("cheerio");
 
-const SEARCH_KEY = "generator based control flow";//搜索的关键字
-
-//根据关键字搜索github项目，根据star多少排序
-
-const searchGithubRankByStars = function (key, maxPage = 1) {
-	return co(function  * (next) {
-		key = key.split(/\s/g).join("+");
-		let list = [];
-		for (let i = 0; i < maxPage; i++) {
-			let url = "https://github.com/search?o=desc&p=" + (i + 1) + "&q=" + key + "&s=stars&type=Repositories&utf8=%E2%9C%93&_pjax=%23js-pjax-container";
-
-			let[err, response, body] = yield request(url, next);//start search
-			if (err) {
-				throw err;
-			}
-
-			//parse
-			let $ = cheerio.load(body.toString());
-			$(".v-align-middle").each((_,item) => {
-				list.push({
-					"name" : $(item).text(),
-					"url" : "https://github.com" + $(item).attr("href")
-				});
-			});
-		}
-		return list;
-	});
+const co_func=function(i){
+  return co(function*(){
+     return 10*i;
+  })
 }
 
-co(function  * (next) {
-	let[err, list] = yield searchGithubRankByStars(SEARCH_KEY, 2);
-	if (err) {
-		throw err;
+
+co(function  * () {
+	let [err1, result1] = yield co_func(1);
+	if (err1) {
+		throw err1;
 	}
-	return list;
-})((err, list) => {
+
+	let [err2, result2] = yield co_func(2);
+    if (err2) {
+   		throw err2;
+   	}
+
+	return result1+result2;
+})((err, result) => {
 	if (err) {
 		console.log(err);
 	} else {
-		console.log(list);
+		console.log(result);
 	}
 })
 
+//或者
+
+co.brief(function*(){
+
+   let result1 = yield co_func(1);
+
+   let result2 = yield co_func(2);
+
+   return result1+result2;
+})((err,result)=>{
+    if (err) {//在最后处理异常
+   		console.log(err);
+   	} else {
+   		console.log(result);
+   	}
+});
 
 ```
 
-### Catch Error
+zco 假定所有的操作都可能出现异常，第一个返回值永远是error,第二个值才是正常的返回值。在我自己的工作项目中希望在异常出现的地方处理异常，因为不同地方出现的
+异常有不同的意义，有的可以重试，有的需要直接终止。
 
-错误捕捉
-
-```javascript
-
-const sync_code_error = function (callback) {
-	throw new Error("manual error");
-	setTimeout(callback, 0);
-}
-
-co(function  * (next) {
-	let a = yield sync_code_error(next);
-	return 10;
-})((err, v) => {
-	console.log(err.message); //"manual error"
-})
+在上面的第二个简明的例子中，异常在最后被处理，而不是在异常出现的地方。这是考虑到有时候并不需要细粒度的去处理异常，可以处理的粗犷一点。
 
 
-```
 
-### When Promise
+### 当遇见Promise时
 
 
 尽管不推荐使用Promise,zco也提供一个API来支持yield Promise.
@@ -329,20 +315,20 @@ co(function  * (next) {
     results for 20000 parallel executions, 1 ms per I/O op ,2017-05-03
 
     name                                                      timecost(ms)     memery(mb)       
-	callback.js                                               118              31.1640625       
-	async-neo@1.8.2.js                                        182              48.58203125      
-	promise_bluebird@2.11.0.js                                723              88.55859375      
-	co_zco_yyrdl@1.2.8.js                                     996              84.04296875      
-	async_caolan@1.5.2.js                                     1162             122.42578125     
-	co_when_generator_cujojs@3.7.8.js                         1229             118.27734375     
-	co_tj_with_bluebird_promise@4.6.0.js                      1422             116.88671875     
-	co_when_generator_cujojs_with_bluebird@3.7.8.js           1436             139.03125        
-	promise_native.js                                         1521             170.59765625     
-	async_await_es7_with_native_promise.js                    1542             169.6015625      
-	co_when_generator_cujojs_with_native_promise@3.7.8.js     1775             168.81640625     
-	co_tj_with_native_promise@4.6.0.js                        1823             161.21484375     
-	async_await_es7_with_bluebird_promise.js                  1988             197.8046875      
-	co_coroutine_bluebird@2.11.0.js                           4469             227.10546875     
+	callback.js                                               93               30.32421875
+    async-neo@1.8.2.js                                        147              48.6328125
+    promise_bluebird@2.11.0.js                                563              92.3984375
+    co_zco_yyrdl@1.3.1.js                                     608              86.37890625
+    async_caolan@1.5.2.js                                     732              122.61328125
+    co_when_generator_cujojs@3.7.8.js                         760              116.640625
+    co_tj_with_bluebird_promise@4.6.0.js                      936              123.2265625
+    co_when_generator_cujojs_with_bluebird@3.7.8.js           946              130.99609375
+    async_await_es7_with_native_promise.js                    1029             166.55078125
+    promise_native.js                                         1051             177.30078125
+    co_tj_with_native_promise@4.6.0.js                        1137             163.296875
+    co_when_generator_cujojs_with_native_promise@3.7.8.js     1158             169.50390625
+    async_await_es7_with_bluebird_promise.js                  1289             197.93359375
+    co_coroutine_bluebird@2.11.0.js                           3972             244.515625
     
 
 
@@ -350,7 +336,13 @@ co(function  * (next) {
     Windows_NT 10.0.14393 x64
     Node.JS 7.7.3
     V8 5.5.372.41
-    Intel(R) Core(TM) i5-3210U CPU @ 2.50GHz × 4
+    Intel(R) Core(TM) i5-5200U CPU @ 2.20GHz × 4
+
+
+
+# 代码简洁度对比
+
+ [同Promise, ES7 async/await，还有TJ的CO做比较](https://github.com/yyrdl/zco/blob/master/readmes/compare.md)
 
 
 # License

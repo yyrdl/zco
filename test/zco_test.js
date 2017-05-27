@@ -629,3 +629,100 @@ describe("timeLimit", function () {
 		}
 	})
 })
+
+describe("brief model",function () {
+	
+	it("return single value",function (done) {
+		var co_func=function () {
+			return co(function *() {
+				return 10;
+			})
+		}
+		co.brief(function *() {
+			let d=yield co_func();
+			if(d!=10){
+				done(new Error());
+			}else{
+				done();
+			}
+		})()
+	})
+
+	it("when error",function (done) {
+		var co_func=function () {
+			return co(function *() {
+				throw new Error();
+			});
+		}
+		co.brief(function *() {
+			let d=yield co_func();
+			if(d==10){
+				done(new Error());
+			}
+		})((err)=>{
+			if(err==null){
+				done(new Error());
+			}else{
+				done()
+			}
+		})
+	})
+	
+})
+
+describe("coverage test",function () {
+	var func1=function(){
+		return co(function *() {
+			throw new Error()
+		})
+	};
+	var func2=function (cb) {
+
+		setTimeout(function () {
+			cb();
+		},40);
+		throw new Error();
+	}
+
+	it("co.all line274",function (done) {
+		co(function *(co_next) {
+          yield co.all(func1(),func2);
+		  yield setTimeout(co_next,60);
+		})(()=>{
+           done()
+		})
+	})
+
+	it("co.all line294",function (done) {
+		var error=null;
+		try{
+			co.all(func1())();
+		}catch (e){
+			error=e;
+		}finally {
+			if(error==null){
+				done(new Error());
+			}else{
+				done()
+			}
+		}
+	})
+
+	it("co.all timeout suspend",function (done) {
+		var future=null;
+		co.timeLimit(10,co(function *() {
+            future= co.all(function (cb) {
+			   setTimeout(function () {
+				   cb();
+			   },1000);
+		   },2000)
+			yield future;
+
+		}))(()=>{
+			future.__suspend__();//try to suspend a already return future
+			done();
+		})
+	})
+
+})
+
