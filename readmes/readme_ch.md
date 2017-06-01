@@ -78,30 +78,30 @@ zco 默认自动为异常添加调用堆栈，但这会使zco的执行速度降�
 示例：
 
 ```javascript
+const co = require("zco");
 
-const co=require("zco");
-
-const async_func=function(json){
-  return co(function*(co_next){
-	  yield setTimeout(co_next,1000);//等待1秒，模拟异步操作
-	  return JSON.parse(json);
-  })
-}
-
-const callFunc1=function(json){
-	return async_func(json);
-}
-
-const callFunc2=function(json){
-	return co.brief(function*(co_next){
-	   yield setTimeout(co_next,1000);	
-       return yield callFunc1(json);
+const async_func = function (json) {
+	return co(function  * (co_next) {
+		yield setTimeout(co_next, 1000); //等待1秒，模拟异步操作
+		return JSON.parse(json);
 	})
 }
 
-callFunc2("{")((err)=>{
-   console.log(err.stack)
+const callFunc1 = function (json) {
+	return async_func(json);
+}
+
+const callFunc2 = function (json) {
+	return co.brief(function  * (co_next) {
+		yield setTimeout(co_next, 1000);
+		return yield callFunc1(json);
+	})
+}
+
+callFunc2("{")((err) => {
+	console.log(err.stack)
 })
+
 ```
 
 打出的stack 如下：
@@ -372,7 +372,7 @@ co(function  * (next) {
 	callback.js                                               93               30.32421875
     async-neo@1.8.2.js                                        147              48.6328125
     promise_bluebird@2.11.0.js                                563              92.3984375
-    co_zco_yyrdl@1.3.1.js                                     608              86.37890625
+    co_zco_yyrdl@1.3.2.js                                     608              86.37890625
     async_caolan@1.5.2.js                                     732              122.61328125
     co_when_generator_cujojs@3.7.8.js                         760              116.640625
     co_tj_with_bluebird_promise@4.6.0.js                      936              123.2265625

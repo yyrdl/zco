@@ -25,7 +25,7 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 
 * __callstack trace__
   
-By default,zco will add callstack to error automatically ,it's a nice solution to debug the error thrown by an async function.
+By default,zco will add callstack to error automatically ,it's a nice way to debug the error thrown by async function.
 
 * __work with callback-api  gracefully__
 
@@ -390,7 +390,7 @@ co(function  * (next) {
 # Performance Battle
      
 	zco callstack trace is forbidden.
-	
+
     results for 20000 parallel executions, 1 ms per I/O op ,2017-05-03
 
     name                                                      timecost(ms)     memery(mb)       
