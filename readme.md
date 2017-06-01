@@ -23,6 +23,14 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 
 # Special Features
 
+* __callstack trace__
+  
+By default,zco will add callstack to error automatically ,it's a nice solution to debug the error thrown by an async function.
+
+* __work with callback-api  gracefully__
+
+Manny modules in node.js provide callback-api,such as `fs` ,you can use them without any wrap.
+
 * __defer__  
 
  
@@ -82,6 +90,52 @@ co(function  * (next) {
 
 Function `co` expect a generator function as it's argument,and return a zco `future`.`future` is a function, The argument of zco `future` is also a function which be called as zco `handler`.
 
+### Callstack trace 
+
+By default ,zco will add callstack to error, this feature cost more running-time,but the performance is still better than [co](https://github.com/tj/co). you can forbid the feature by 
+
+invoking `zco.__TrackCallStack(false)` globally.
+
+examples:
+
+```javascript
+
+const co=require("zco");
+
+const async_func=function(json){
+  return co(function*(co_next){
+	  yield setTimeout(co_next,10);//wait 10 ms ,simulate async  operation
+	  return JSON.parse(json);
+  })
+}
+
+const callFunc1=function(json){
+	return async_func(json);
+}
+
+const callFunc2=function(json){
+	return co.brief(function*(co_next){
+	   yield setTimeout(co_next,10);	
+       return yield callFunc1(json);
+	})
+}
+
+callFunc2("{")((err)=>{
+   console.log(err.stack)
+})
+```
+output:
+
+```
+SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at e:\GIT\zco\test.js:10:21                     //JSON.parse
+    at callFunc1 (e:\GIT\zco\test.js:15:12)         //where we call 'async_func' 
+    at e:\GIT\zco\test.js:21:22                     //where we call 'callFunc1'
+    at Object.<anonymous> (e:\GIT\zco\test.js:25:1) //where we call 'callFunc2'
+```
+
+try it by yourself :)
 
 ### Defer
 
@@ -334,14 +388,16 @@ co(function  * (next) {
 ```
 
 # Performance Battle
-
+     
+	zco callstack trace is forbidden.
+	
     results for 20000 parallel executions, 1 ms per I/O op ,2017-05-03
 
     name                                                      timecost(ms)     memery(mb)       
 	callback.js                                               93               30.32421875
     async-neo@1.8.2.js                                        147              48.6328125
     promise_bluebird@2.11.0.js                                563              92.3984375
-    co_zco_yyrdl@1.3.1.js                                     608              86.37890625
+    co_zco_yyrdl@1.3.2.js                                     608              86.37890625
     async_caolan@1.5.2.js                                     732              122.61328125
     co_when_generator_cujojs@3.7.8.js                         760              116.640625
     co_tj_with_bluebird_promise@4.6.0.js                      936              123.2265625

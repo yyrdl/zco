@@ -4,6 +4,8 @@
 
 const co=require("../../index");
 
+co.__TrackCallStack(false);
+
 const actions=require("../actions");
 
 module.exports=function(stream,idOrPath,tag,cb){

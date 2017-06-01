@@ -17,6 +17,10 @@
 
 #  特别功能
 
+* __调用栈跟踪__
+
+  zco会自动为异常添加调用堆栈，方便debug异常出现的路径，解决了node里面异步方法出现异常难以debug的问题。
+
 * __深度支持回调__
 
   node.js里面大部分原生接口都是基于回调实现的，比如文件模块'fs'，zco可以轻松地和这些模块协作，不需要任何包装。
@@ -62,13 +66,63 @@ co(function  * (next) {
 
 ```
 
+
+
 `co`方法接收一个`GeneratorFunction`,返回一个zco的`future`,`future`是一个`Function`实例，`future`接收一个函数作为他的参数，这个函数称之为zco的返回处理句柄,即`handler`。
+
+
+### 调用栈跟踪
+
+zco 默认自动为异常添加调用堆栈，但这会使zco的执行速度降低一半，即使这样总体性能也优于[co](https://github.com/tj/co),可以调用`zco.__TrackCallStack(false)`全局禁用栈跟踪。
+
+示例：
+
+```javascript
+
+const co=require("zco");
+
+const async_func=function(json){
+  return co(function*(co_next){
+	  yield setTimeout(co_next,1000);//等待1秒，模拟异步操作
+	  return JSON.parse(json);
+  })
+}
+
+const callFunc1=function(json){
+	return async_func(json);
+}
+
+const callFunc2=function(json){
+	return co.brief(function*(co_next){
+	   yield setTimeout(co_next,1000);	
+       return yield callFunc1(json);
+	})
+}
+
+callFunc2("{")((err)=>{
+   console.log(err.stack)
+})
+```
+
+打出的stack 如下：
+
+```
+SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at e:\GIT\zco\test.js:10:21                     //对应JSON.parse
+    at callFunc1 (e:\GIT\zco\test.js:15:12)         //对应 async_func 调用的地方
+    at e:\GIT\zco\test.js:21:22                     //对应callFunc1调用的地方
+    at Object.<anonymous> (e:\GIT\zco\test.js:25:1) //对应调用callFunc2的地方
+
+```
+
+建议亲自尝试一下。
 
 ### Defer
 
 一个实用的使用`defer`的例子:定义一个并发锁，控制访问百度首页的并发量是5，为保证锁被释放，在defer里调用`mutex.unLock` 方法.
 
->锁被占用以后必须在某处被释放，否则会造成死锁。然而由于无法确定代码是否会异常，导致释放锁的操作没被执行，defer提供了一个无论如何都会执行的保证。
+>锁被占用以后必须在某处被释放，否则会造成死锁。然而无法确定代码是否会异常，进而会导致释放锁的操作没被执行。zco 通过defer提供了一个无论如何都会执行的保证。
 
  
 ```javascript
@@ -310,7 +364,7 @@ co(function  * (next) {
 
 # Performance Battle
 
-    带co前缀的都属于协程模块
+    带co前缀的都属于协程模块，在禁用栈跟踪的情况下测试zco。
 
     results for 20000 parallel executions, 1 ms per I/O op ,2017-05-03
 

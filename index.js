@@ -1,27 +1,17 @@
 /**
  * Created by yyrdl on 2017/3/14.
  */
+var track = require("./track");
 var slice = Array.prototype.slice;
 var toString = Object.prototype.toString;
+
+var TRACK_STACK=true;
 
 var isZcoFuture = function (future) {
 	return future && ("function" === typeof future.__suspend__);
 }
 var isPromise = function (pro) {
 	return pro && ("function" === (typeof pro.then)) && ("function" === (typeof pro.catch ));
-}
-var makeError = function (msg) {
-	var error = new Error(msg);
-	error.name = "TimeoutError";
-	var separator = "\n    at";
-	var stack = error.stack || " ";
-	var first_index = stack.indexOf(separator);
-	var msg = stack.substring(0, first_index);
-	first_index = stack.indexOf(separator, first_index + 1);
-	first_index = stack.indexOf(separator, first_index + 1);
-	stack = stack.substring(first_index, stack.length);
-	error.stack = msg + stack;
-	return error;
 }
 
 var WRAP_DEFER_MODEL = 1;
@@ -37,6 +27,12 @@ var zco_core = function (gen, model) {
 	current_child_future = null,
 	hasRunCallback = false,
 	internal = false;
+
+	var frame=null;
+
+	if(TRACK_STACK){
+		frame = track.callStackFrame(4)
+	}
 
 	var _run_callback = function (error, value) {
 
@@ -60,6 +56,11 @@ var zco_core = function (gen, model) {
 		}
 
 		hasRunCallback = true;
+
+		if(TRACK_STACK && e){
+
+			track.appendStackFrame(e,frame);
+		}
 
 		if (deferFunc != null) {
 
@@ -235,7 +236,7 @@ var all = function () {
 	/**
 	 * make timeout error here ,get the current error stack,reset the top frame of the stack to where  the `all` function is called
 	 */
-	var timeout_error = makeError("timeout");
+	var timeout_error = track.makeTimeoutError("timeout");
 
 	for (var i = 0; i < args.length; i++) {
 
@@ -291,7 +292,7 @@ var all = function () {
 			return cb(error, result);
 		}
 
-		if (error) {
+		if (error) { //your code throws an error ,but no handler provided ,zco throws it out ,do not catch silently
 			throw error; //something error ,or timeout
 		}
 
@@ -429,7 +430,7 @@ var timeLimit = function (ms, future) {
 	/**
 	 * make timeout error here ,get the current error stack,reset the top frame of the stack to where  the `timeLimit` function is called
 	 */
-	var timeout_error = makeError("timeout");
+	var timeout_error = track.makeTimeoutError("timeout");
 
 	var cb_slave = function (err, result) {
 		if (has_return) {
@@ -450,7 +451,7 @@ var timeLimit = function (ms, future) {
 			return callback(err, result);
 		}
 
-		if (err) {
+		if (err) { //your code throws an error ,but no handler provided ,zco throws it out ,do not catch silently
 			throw err;
 		}
 	}
@@ -495,8 +496,18 @@ var co = function (gen) {
 	return zco_core(gen);
 }
 
+
 co.brief = function (gen) {
 	return zco_core(gen, BRIEF_MODEl);
+}
+
+/**
+ * global config ,track call stack
+ * */
+co.__TrackCallStack=function (boo) {
+	if("boolean" === typeof boo){
+		TRACK_STACK=boo;
+	}
 }
 
 co.all = all;
@@ -509,5 +520,6 @@ co.all = all;
 co.wrapPromise = wrapPromise;
 
 co.timeLimit = timeLimit;
+
 
 module.exports = co;
