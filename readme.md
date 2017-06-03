@@ -34,7 +34,7 @@ Manny modules in node.js provide callback-api,such as `fs` ,you can use them wit
 * __defer__  
 
  
-Like in golang,`defer` define an operation that will be executed after the coroutine exit .you can set some clear-up work in defer, or define some operations that must be executed no matter if error occured.
+Like in golang,`defer` define an operation that will be executed after the coroutine exit .you can set some clear-up work in defer, or define some operations that must be executed no matter if there is an error.
 
 
 * __coroutine suspension__ 
@@ -90,57 +90,52 @@ co(function  * (next) {
 
 Function `co` expect a generator function as it's argument,and return a zco `future`.`future` is a function, The argument of zco `future` is also a function which be called as zco `handler`.
 
-### Callstack trace 
+### Callstack Trace 
 
-By default ,zco will add callstack to error, this feature cost more running-time,but the performance is still better than [co](https://github.com/tj/co). you can forbid the feature by 
+By default ,zco will add callstack to error,  you can forbid the feature globally by invoking `zco.__TrackCallStack(false)` .
 
-invoking `zco.__TrackCallStack(false)` globally.
+
+>this feature cost more time,but the performance is still not bad .see performance battle below. 
 
 examples:
 
 ```javascript
+const co = require("zco");
 
-const co=require("zco");
-
-const async_func=function(json){
-  return co(function*(co_next){
-	  yield setTimeout(co_next,10);//wait 10 ms ,simulate async  operation
-	  return JSON.parse(json);
-  })
-}
-
-const callFunc1=function(json){
-	return async_func(json);
-}
-
-const callFunc2=function(json){
-	return co.brief(function*(co_next){
-	   yield setTimeout(co_next,10);	
-       return yield callFunc1(json);
+const async_func = function (json) {
+	return co(function  * (co_next) {
+		yield setTimeout(co_next, 1000); //wait 1 second,simulate async operation
+		return JSON.parse(json);
 	})
 }
 
-callFunc2("{")((err)=>{
-   console.log(err.stack)
+const callFunc1 = function (json) {
+	return async_func(json);
+}
+ 
+callFunc1("{")((err) => {
+	console.log(err.stack)
 })
+
 ```
-output:
+
+stack：
 
 ```
 SyntaxError: Unexpected end of JSON input
     at JSON.parse (<anonymous>)
-    at e:\GIT\zco\test.js:10:21                     //JSON.parse
-    at callFunc1 (e:\GIT\zco\test.js:15:12)         //where we call 'async_func' 
-    at e:\GIT\zco\test.js:21:22                     //where we call 'callFunc1'
-    at Object.<anonymous> (e:\GIT\zco\test.js:25:1) //where we call 'callFunc2'
+    at f:\social_insurance_test\co\co.js:6:19                       //where we call  `JSON.parse `
+    at callFunc1 (f:\social_insurance_test\co\co.js:11:11)          //where we call  `async_func `
+    at Object.<anonymous> (f:\social_insurance_test\co\co.js:14:1)  //where we call  `callFunc1 `
 ```
 
 try it by yourself :)
 
 ### Defer
 
-
-  A simple `defer` usage: define a concurrent lock ,make the max concurrency is  5 when request google main page. 
+It's a little same with the keyword `defer` in golang. 
+  
+A simple `defer` usage: define a concurrent lock ,make the max concurrency is  5 when request google main page. 
 In order to make sure the lock is be freed after `lock` ,we invoke the `unLock` method in `defer`.
 
 > If error occured in the operation defined by `defer` ,the error will be passed to the `handler`,if no `handler` provided ,it will be thrown out.
@@ -284,7 +279,7 @@ co(function  * (next) {
 
 ```
 
-### nest useage 
+### Nest Useage 
 
 ```javascript
 const co = require("zco");
@@ -336,7 +331,8 @@ co.brief(function*(){
 
 ```
 
-zco suppose it's  possible that all operations will go wrong, so the first return-value always be error,the second one is the exact result returned by the function, because  error in different place has different meaning.
+zco suppose it's  possible that all operations will go wrong, so the first return-value always be error,the second one is the exact result returned by the function, because  error in different place has different meaning,we can deal with 
+them in different way.
 
 But sometimes ,we don't want to dealing  with error everywhere ,then we use `co.brief`
 
@@ -389,36 +385,53 @@ co(function  * (next) {
 
 # Performance Battle
      
-	zco callstack trace is forbidden.
 
-    results for 20000 parallel executions, 1 ms per I/O op ,2017-05-03
+    results for 20000 parallel executions, 1 ms per I/O op ,2017-06-03
 
-    name                                                      timecost(ms)     memery(mb)       
-	callback.js                                               93               30.32421875
-    async-neo@1.8.2.js                                        147              48.6328125
-    promise_bluebird@2.11.0.js                                563              92.3984375
-    co_zco_yyrdl@1.3.2.js                                     608              86.37890625
-    async_caolan@1.5.2.js                                     732              122.61328125
-    co_when_generator_cujojs@3.7.8.js                         760              116.640625
-    co_tj_with_bluebird_promise@4.6.0.js                      936              123.2265625
-    co_when_generator_cujojs_with_bluebird@3.7.8.js           946              130.99609375
-    async_await_es7_with_native_promise.js                    1029             166.55078125
-    promise_native.js                                         1051             177.30078125
-    co_tj_with_native_promise@4.6.0.js                        1137             163.296875
-    co_when_generator_cujojs_with_native_promise@3.7.8.js     1158             169.50390625
-    async_await_es7_with_bluebird_promise.js                  1289             197.93359375
-    co_coroutine_bluebird@2.11.0.js                           3972             244.515625
+	when turn off callstack-trace
+     
+	name                                                      timecost(ms)      memory(mb)       score(time+memory)     
+    callback.js                                               96                30.23828125      46.5068
+    async-neo@1.8.2.js                                        146               48.59765625      30.2967
+    promise_bluebird@2.11.0.js                                509               84.8828125       10.1153
+    co_zco_yyrdl@1.3.2.js                                     579               88.9609375       9.1068
+    co_when_generator_cujojs@3.7.8.js                         721               117.109375       7.1949
+    async_caolan@1.5.2.js                                     712               122.5859375      7.1672
+    co_tj_with_bluebird_promise@4.6.0.js                      895               124.79296875     6.0711
+    co_when_generator_cujojs_with_bluebird@3.7.8.js           916               131.3515625      5.8794
+    async_await_es7_with_native_promise.js                    964               166.82421875     5.2861
+    promise_native.js                                         949               179.29296875     5.2457
+    co_tj_with_native_promise@4.6.0.js                        1107              163.2421875      4.8229
+    co_when_generator_cujojs_with_native_promise@3.7.8.js     1112              173.63671875     4.719
+    async_await_es7_with_bluebird_promise.js                  1183              191.41796875     4.3899
+    co_coroutine_bluebird@2.11.0.js                           3695              242.4296875      2
+
+    
+    when turn on stack trace：
 
 
-
-
+	name                                                      timecost(ms)      memory(mb)       score(time+memory)     
+    callback.js                                               92                31.1015625       49.8332
+    async-neo@1.8.2.js                                        166               47.7109375       28.3802
+    promise_bluebird@2.11.0.js                                510               85.125           10.4324
+    async_caolan@1.5.2.js                                     716               122.328125       7.3841
+    co_when_generator_cujojs@3.7.8.js                         789               117.17578125     6.9716
+    co_tj_with_bluebird_promise@4.6.0.js                      884               126.046875       6.2992
+    co_when_generator_cujojs_with_bluebird@3.7.8.js           883               131.0234375      6.231
+    co_zco_yyrdl@1.3.2.js                                     1181              94.42578125      5.8436
+    promise_native.js                                         999               170.3125         5.2953
+    async_await_es7_with_native_promise.js                    1022              161.47265625     5.2862
+    co_tj_with_native_promise@4.6.0.js                        1089              162.99609375     5.0394
+    async_await_es7_with_bluebird_promise.js                  1165              188.90625        4.6036
+    co_when_generator_cujojs_with_native_promise@3.7.8.js     1231              173.71875        4.5379
+    co_coroutine_bluebird@2.11.0.js                           3867              242.61328125     2
 
     Platform info:
     Windows_NT 10.0.14393 x64
     Node.JS 7.7.3
     V8 5.5.372.41
     Intel(R) Core(TM) i5-5200U CPU @ 2.20GHz × 4
-	
+
 	
 	
 

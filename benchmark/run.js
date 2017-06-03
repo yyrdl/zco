@@ -35,11 +35,31 @@ var blank=function(num){
 }
 var write=function(measureStats){
     var len=[];
-    measureStats=measureStats.sort(function(a,b){
-        return parseInt(a[1])>parseInt(b[1])?1:-1;
+    var maxTimecost=0,maxMem=0;
+    measureStats.forEach(function (item) {
+        if(parseInt(item[1])>maxTimecost){
+            maxTimecost=parseInt(item[1]);
+        }
+        if(parseFloat(item[2])>maxMem){
+            maxMem=parseFloat(item[2]);
+        }
     });
 
-    measureStats.unshift(["name","timecost(ms)","memery(mb)"]);
+    measureStats=measureStats.sort(function(a,b){
+        var ratio1=maxTimecost/parseInt(a[1])+maxMem/parseFloat(a[2]);
+        var ratio2=maxTimecost/parseInt(b[1])+maxMem/parseFloat(b[2]);
+        ratio1=Math.floor(ratio1*10000)/10000;
+        ratio2=Math.floor(ratio2*10000)/10000;
+        if(a.length==3){
+            a.push(ratio1);
+        }
+        if(b.length==3){
+            b.push(ratio2);
+        }
+        return ratio1>ratio2?-1:1;
+    });
+
+    measureStats.unshift(["name","time-cost(ms)","memory(mb)","score(time+memory)"]);
 
     for(var i=0;i<measureStats[0].length;i++){
         var l=0;
