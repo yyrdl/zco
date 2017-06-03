@@ -18,7 +18,6 @@ Recommend versions of node.js(or iojs)  which support the destructuring assignme
 *  [Performance Battle](#performance-battle)
 *  [Useage](#useage)
 *  [Example](#example)
-*  [Compare with tj's co,Promise, callback,and ES7 "async/await" when do samething](https://github.com/yyrdl/zco/blob/master/readmes/compare.md)
 
 
 # Special Features

@@ -402,12 +402,7 @@ co(function  * (next) {
     Node.JS 7.7.3
     V8 5.5.372.41
     Intel(R) Core(TM) i5-5200U CPU @ 2.20GHz × 4
-
-
-
-# 代码简洁度对比
-
- [同Promise, ES7 async/await，还有TJ的CO做比较](https://github.com/yyrdl/zco/blob/master/readmes/compare.md)
+ 
 
 
 # License
