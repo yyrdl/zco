@@ -4,7 +4,7 @@
 
 # ZCO ![build status][test_status_url] [![Coverage Status][coverage_status_url]][coverage_page]
 
-基于Generator的协程模块,无外部依赖，支持defer和协程超时终止.
+基于Generator的协程模块,无外部依赖，支持defer和协程超时终止,可以让您愉快地书写异步代码，就像写同步代码一样，并且不依赖Promise.
 
 推荐支持解构语法node.js版本。
 
