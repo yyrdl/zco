@@ -4,7 +4,7 @@
 
 const co=require("../../index");
 
-co.__TrackCallStack(false);
+co.__TrackCallStack(false);//turn off stack trace
 
 const actions=require("../actions");
 

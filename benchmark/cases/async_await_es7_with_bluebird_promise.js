@@ -4,58 +4,17 @@
 
 const Promise=require("bluebird");
 const actions=require("../actions");
-
-//需要将回调包装成 promsie,convert callback  to promise
-
-let getUserinfo=function(){
-    return new Promise((resolve,reject)=>{
-        actions.getUserinfo(function(err,info){
-            if(err){
-                reject(err);
-            }else{
-                resolve(info);
-            }
-        });
-    });
-}
-
-let articleList=function(user){
-    return new Promise((resolve,reject)=>{
-        actions.articleList(user,function(err,list){
-            if(err){
-                reject(err);
-            }else{
-                resolve(list);
-            }
-        });
-    });
-}
+const util=require("../util");
 
 
-let getArticle=function(arti){
-    return new Promise((resolve,reject)=>{
-        actions.getArticle(arti,function(err,article){
-            if(err){
-                reject(err);
-            }else{
-                resolve(article);
-            }
-        });
-    });
-}
+const getUserinfo=util.promisify(actions,actions.getUserinfo,Promise);
 
+const articleList=util.promisify(actions,actions.articleList,Promise);
 
-let updateAge=function(age){
-    return new Promise((resolve,reject)=>{
-        actions.updateAge(age,function(err){
-            if(err){
-                reject(err);
-            }else{
-                resolve();
-            }
-        });
-    });
-}
+const getArticle=util.promisify(actions,actions.getArticle,Promise);
+
+const updateAge=util.promisify(actions,actions.updateAge,Promise);
+
 
 module.exports=function(stream,idOrPath,tag,cb){
     (async ()=>{
@@ -75,10 +34,6 @@ module.exports=function(stream,idOrPath,tag,cb){
      cb()
     })
 };
-
-
-
-
 
 
 

@@ -4,57 +4,15 @@
 
 const  Promise=require("bluebird");
 const  actions=require("../actions");
+const util=require("../util");
 
-let getUserinfo=function(){
-    return new Promise((resolve,reject)=>{
-        actions.getUserinfo(function(err,info){
-            if(err){
-                reject(err);
-            }else{
-                resolve(info);
-            }
-        });
-    });
-}
+const getUserinfo=util.promisify(actions,actions.getUserinfo,Promise);
 
-let articleList=function(user){
-    return new Promise((resolve,reject)=>{
-        actions.articleList(user,function(err,list){
-            if(err){
-                reject(err);
-            }else{
-                resolve(list);
-            }
-        });
-    });
-}
+const articleList=util.promisify(actions,actions.articleList,Promise);
 
+const getArticle=util.promisify(actions,actions.getArticle,Promise);
 
-let getArticle=function(arti){
-    return new Promise((resolve,reject)=>{
-        actions.getArticle(arti,function(err,article){
-            if(err){
-                reject(err);
-            }else{
-                resolve(article);
-            }
-        });
-    });
-}
-
-
-
-let updateAge=function(age){
-    return new Promise((resolve,reject)=>{
-        actions.updateAge(age,function(err){
-            if(err){
-                reject(err);
-            }else{
-                resolve();
-            }
-        });
-    });
-}
+const updateAge=util.promisify(actions,actions.updateAge,Promise);
 
 module.exports=function(stream,idOrPath,tag,cb){
     getUserinfo().then(function(userinfo){

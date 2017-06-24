@@ -1,21 +1,21 @@
 {
-	"name" : "async-compare",
-	"version" : "0.1.1",
-	"description" : "Compare the performance and code of multiple async patterns",
-	"main" : "run.js",
-	"dependencies" : {
-		"async" : "1.5.2",
-		"neo-async" : "1.8.2",
-		"optimist" : "^0.6.1",
-		"bluebird" : "2.11.0",
-		"when" : "3.7.8",
-		"co" : "4.6.0"
+	"name": "async-compare",
+	"version": "0.1.1",
+	"description": "Compare the performance and code of multiple async patterns",
+	"main": "run.js",
+	"dependencies": {
+		"async": "1.5.2",
+		"neo-async": "1.8.2",
+		"optimist": "^0.6.1",
+		"bluebird": "2.11.0",
+		"when": "3.7.8",
+		"co": "4.6.0"
 	},
-	"devDependencies" : {},
-	"scripts" : {
-		"test" : "echo \"Error: no test specified\" && exit 1"
+	"devDependencies": {},
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
 	},
-	"keywords" : [
+	"keywords": [
 		"generators",
 		"promises",
 		"callbacks",
@@ -23,6 +23,6 @@
 		"compare",
 		"async"
 	],
-	"author" : "yyrdl",
-	"license" : "MIT"
+	"author": "yyrdl",
+	"license": "MIT"
 }
