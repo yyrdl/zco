@@ -34,7 +34,7 @@ var zco_core = function (gen, model) {
 		frame = track.callStackFrame(4)
 	}
 
-	var _run_callback = function (error, value) {
+	var zco_core_run_callback = function (error, value) {
 
 		if (callback != null) {
 			return callback(error, value);
@@ -45,11 +45,11 @@ var zco_core = function (gen, model) {
 		}
 	}
 
-	var _make_defer_func = function (error) {
+	var zco_core_make_defer_func = function (error) {
 		return zco_core(deferFunc, WRAP_DEFER_MODEL, error); //build defer func,and delivery error
 	}
 
-	var _return = function (e, v) {
+	var zco_core_return = function (e, v) {
 
 		if (hasRunCallback) {
 			return;
@@ -64,23 +64,23 @@ var zco_core = function (gen, model) {
 
 		if (deferFunc != null) {
 
-			var _func = _make_defer_func(e);
+			var _func = zco_core_make_defer_func(e);
 
 			return _func(function (ee) {
 				if (ee != null && callback === null) {
 					throw ee; //error occurred in defer,throw out if no handler provided
 				} else {
-					_run_callback(e || ee, v)
+					zco_core_run_callback(e || ee, v)
 				}
 			});
 
 		}
 
-		return _run_callback(e, v);
+		return zco_core_run_callback(e, v);
 
 	}
 
-	var run = function (arg) {
+	var zco_core_run = function (arg) {
 
 		var v = null,
 		error = null;
@@ -93,24 +93,24 @@ var zco_core = function (gen, model) {
 		}
 
 		if (error != null) {
-			return _return(error);
+			return zco_core_return(error);
 		}
 
 		if (v.done) {
-			return _return(null, v.value);
+			return zco_core_return(null, v.value);
 		}
 
 		if (isZcoFuture(v.value)) {
 			current_child_future = v.value;
 			internal = true;
-			return v.value(next);
+			return v.value(zco_core_next);
 		}
 
 	}
 
-	var nextSlave = function (arg) {
+	var zco_core_nextSlave = function (arg) {
 		hasReturn = false;
-		return run(arg);
+		return zco_core_run(arg);
 	}
 	/**
 	 * define defer
@@ -131,17 +131,17 @@ var zco_core = function (gen, model) {
 	/**
 	 * define zco future
 	 * */
-	var future = function (cb) {
+	var zco_core_future = function (cb) {
 		if ("function" == typeof cb) {
 			callback = cb;
 		}
-		run();
+		zco_core_run();
 	}
 
 	/**
 	 * define 'suspend' method
 	 * */
-	future.__suspend__ = function () {
+	zco_core_future.__suspend__ = function () {
 		if (hasRunCallback || suspended) {
 			return;
 		}
@@ -152,7 +152,7 @@ var zco_core = function (gen, model) {
 
 		if (deferFunc != null) {
 
-			var _func = _make_defer_func(new Error("coroutine is suspended,maybe because of timeout."));
+			var _func = zco_core_make_defer_func(new Error("coroutine is suspended,maybe because of timeout."));
 
 			/**
 			 * run defer ,ignore the error occurred in defer
@@ -172,7 +172,7 @@ var zco_core = function (gen, model) {
 
 	}
 
-	var next = function () {
+	var zco_core_next = function () {
 		if (suspended) {
 			return;
 		}
@@ -181,7 +181,7 @@ var zco_core = function (gen, model) {
 
 		if (model === BRIEF_MODEl && true === internal) {
 			if (arg[0] !== null) {
-				return _return(arg[0]);
+				return zco_core_return(arg[0]);
 			}
 			arg = arg[1];
 		}
@@ -192,13 +192,13 @@ var zco_core = function (gen, model) {
 
 			setTimeout(function () {
 
-				nextSlave(arg);
+				zco_core_nextSlave(arg);
 
 			}, 0);
 
 		} else {
 
-			nextSlave(arg);
+			zco_core_nextSlave(arg);
 
 		}
 	}
@@ -207,11 +207,11 @@ var zco_core = function (gen, model) {
 
 		if (model === WRAP_DEFER_MODEL) {
 
-			iterator = gen(next, arguments[2]);
+			iterator = gen(zco_core_next, arguments[2]);
 
 		} else {
 
-			iterator = gen(next, defer);
+			iterator = gen(zco_core_next, defer);
 
 		}
 
@@ -221,7 +221,7 @@ var zco_core = function (gen, model) {
 
 	}
 
-	return future;
+	return zco_core_future;
 }
 
 var all = function () {
