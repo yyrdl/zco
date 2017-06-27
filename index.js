@@ -5,11 +5,12 @@ var track = require("./track");
 var slice = Array.prototype.slice;
 var toString = Object.prototype.toString;
 
-var TRACK_STACK=true;
+var TRACK_STACK = true;
 
 var isZcoFuture = function (future) {
-	return future && ("function" === typeof future.__suspend__);
+	return future && ("function" === typeof future.__suspend__) && ("function" === typeof future.__ctx__);
 }
+
 var isPromise = function (pro) {
 	return pro && ("function" === (typeof pro.then)) && ("function" === (typeof pro.catch ));
 }
@@ -28,16 +29,20 @@ var zco_core = function (gen, model) {
 	hasRunCallback = false,
 	internal = false;
 
-	var frame=null;
+	var _this = {
+		"ctx": {}
+	};
 
-	if(TRACK_STACK){
+	var frame = null;
+
+	if (TRACK_STACK) {
 		frame = track.callStackFrame(4)
 	}
 
 	var zco_core_run_callback = function (error, value) {
 
 		if (callback != null) {
-			return callback(error, value);
+			return callback.apply(_this, [error, value]);
 		}
 
 		if (error) {
@@ -57,14 +62,15 @@ var zco_core = function (gen, model) {
 
 		hasRunCallback = true;
 
-		if(TRACK_STACK && e){
+		if (TRACK_STACK && e) {
 
-			track.appendStackFrame(e,frame);
+			track.appendStackFrame(e, frame);
 		}
 
 		if (deferFunc != null) {
 
 			var _func = zco_core_make_defer_func(e);
+			_func.__ctx__(_this.ctx);
 
 			return _func(function (ee) {
 				if (ee != null && callback === null) {
@@ -103,6 +109,7 @@ var zco_core = function (gen, model) {
 		if (isZcoFuture(v.value)) {
 			current_child_future = v.value;
 			internal = true;
+			v.value.__ctx__(_this.ctx);
 			return v.value(zco_core_next);
 		}
 
@@ -172,6 +179,10 @@ var zco_core = function (gen, model) {
 
 	}
 
+	zco_core_future.__ctx__ = function (ctx) {
+		_this.ctx = ctx;
+	}
+
 	var zco_core_next = function () {
 		if (suspended) {
 			return;
@@ -203,15 +214,19 @@ var zco_core = function (gen, model) {
 		}
 	}
 
+	zco_core_next.ctx = function () {
+		return _this.ctx;
+	}
+
 	if ("[object GeneratorFunction]" === toString.call(gen)) { //todo: support other Generator implements
 
 		if (model === WRAP_DEFER_MODEL) {
 
-			iterator = gen(zco_core_next, arguments[2]);
+			iterator = gen.apply(_this, [zco_core_next, arguments[2]]);
 
 		} else {
 
-			iterator = gen(zco_core_next, defer);
+			iterator = gen.apply(_this, [zco_core_next, defer]);
 
 		}
 
@@ -232,6 +247,10 @@ var all = function () {
 	actions = [],
 	timeout = null,
 	args = slice.call(arguments);
+
+	var _this = {
+		"ctx": {}
+	};
 
 	/**
 	 * make timeout error here ,get the current error stack,reset the top frame of the stack to where  the `all` function is called
@@ -273,7 +292,7 @@ var all = function () {
 	var _end = function (error, result, is_timeout) {
 
 		if (hasReturn) {
-			return ;
+			return;
 		}
 
 		hasReturn = true;
@@ -284,12 +303,12 @@ var all = function () {
 
 		}
 
-		if (is_timeout || null!== error) { //self timeout or error occurred ,suspend zco futures
+		if (is_timeout || null !== error) { //self timeout or error occurred ,suspend zco futures
 			_suspend_zco_future();
 		}
 
 		if (cb !== null) {
-			return cb(error, result);
+			return cb.apply(_this, [error, result]);
 		}
 
 		if (error) { //your code throws an error ,but no handler provided ,zco throws it out ,do not catch silently
@@ -326,20 +345,32 @@ var all = function () {
 			(function (index) {
 				var _action = actions[index];
 				if (isZcoFuture(_action)) {
-					_action(function (err,data) {
+
+					_action.__ctx__(_this.ctx);
+
+					_action(function (err, data) {
 						if (err) {
 							return _end(err, null, false);
 						}
 						result[index] = data;
 						check();
 					});
+
 				} else {
 					try {
-						_action(function () {
+
+						var slave_cb = function () {
 							var return_value = slice.call(arguments);
 							result[index] = return_value;
 							check();
-						});
+						};
+
+						slave_cb.ctx = function () {
+							return _this.ctx;
+						}
+
+						_action(slave_cb);
+
 					} catch (e) {
 						_end(e, null, false);
 					}
@@ -386,6 +417,10 @@ var all = function () {
 		_suspend_zco_future();
 	}
 
+	future.__ctx__ = function (ctx) {
+		_this.ctx = ctx;
+	}
+
 	return future;
 }
 
@@ -406,6 +441,7 @@ var wrapPromise = function (pro) {
 	}
 
 	future.__suspend__ = function () {};
+	future.__ctx__ = function () {}
 
 	return future;
 }
@@ -488,6 +524,10 @@ var timeLimit = function (ms, future) {
 		future.__suspend__();
 	}
 
+	t_future.__ctx__ = function (ctx) {
+		future.__ctx__(ctx);
+	}
+
 	return t_future;
 
 }
@@ -496,7 +536,6 @@ var co = function (gen) {
 	return zco_core(gen);
 }
 
-
 co.brief = function (gen) {
 	return zco_core(gen, BRIEF_MODEl);
 }
@@ -504,9 +543,9 @@ co.brief = function (gen) {
 /**
  * global config ,track call stack
  * */
-co.__TrackCallStack=function (boo) {
-	if("boolean" === typeof boo){
-		TRACK_STACK=boo;
+co.__TrackCallStack = function (boo) {
+	if ("boolean" === typeof boo) {
+		TRACK_STACK = boo;
 	}
 }
 
@@ -520,6 +559,5 @@ co.all = all;
 co.wrapPromise = wrapPromise;
 
 co.timeLimit = timeLimit;
-
 
 module.exports = co;

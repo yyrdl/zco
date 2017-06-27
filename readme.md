@@ -199,6 +199,46 @@ const requestGoogleMainPage = function () {
 }
 
 ```
+
+### ctx
+
+__Experimental__,not available from npm ,you can test by require this repo.
+
+```javascript
+
+const co = require("zco");
+
+const func1 = function () {
+	return co(function  * (co_next) {
+		yield setTimeout(co_next, 10);
+		console.log(this.ctx.user);//Jack
+		this.ctx.age = 10;
+	})
+}
+
+const func2 = function (callback) {
+	setTimeout(function () {
+		if ("function" === typeof callback.ctx) {
+			callback("hello :" + callback.ctx().user);
+		} else {
+			callback("hello");
+		}
+	});
+}
+
+co.brief(function  * (co_next) {
+	this.ctx.user = "Jack";// coroutine local ctx
+	yield func1();
+	let[msg] = yield func2(co_next);
+	console.log(msg);//hello :Jack
+})(function (err) {
+	if (err) {
+		console.log(err.stack);
+	}
+	console.log(this.ctx.user + " " + this.ctx.age);//Jack 10
+})
+
+```
 ### Zco.timeLimit
 
 Set a time limit,suspend the coroutine and throw an error when timeout.if there are some operations defined by `defer`,the operations will be executed.
