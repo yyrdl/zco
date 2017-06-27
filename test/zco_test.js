@@ -726,3 +726,75 @@ describe("coverage test",function () {
 
 })
 
+
+describe("ctx",function () {
+	
+	it("simple",function (done) {
+		function func1() {
+			return co(function *() {
+				if(this.ctx.user=="Jack"){
+					done();
+				}else{
+					done(new Error());
+				}
+			});
+		}
+		co(function *() {
+			this.ctx.user="Jack";
+			yield func1();
+		})()
+	});
+	
+	it("with .timeLimit",function (done) {
+		function func1() {
+			return co(function *() {
+				if(this.ctx.user=="Jack"){
+					done();
+				}else{
+					done(new Error());
+				}
+			});
+		}
+		co(function *() {
+			this.ctx.user="Jack";
+			yield co.timeLimit(1,func1());
+		})()
+	});
+
+	it("with .all",function (done) {
+		function func1() {
+			return co(function *() {
+				if(this.ctx.user=="Jack"){
+					done();
+				}else{
+					done(new Error());
+				}
+			});
+		}
+		co(function *() {
+			this.ctx.user="Jack";
+			yield co.all(func1(),1);
+		})()
+	});
+
+	it("when  callback api",function (done) {
+		function func1(callback) {
+			 setTimeout(function () {
+				 if("function" === typeof callback.ctx){
+					 if(callback.ctx().user=="Jack"){
+						 done();
+					 }else{
+						 done(new Error());
+					 }
+				 }else{
+					 done(new Error());
+				 }
+			 },10)
+		}
+		co(function *(co_next) {
+			this.ctx.user="Jack";
+			yield func1(co_next);
+		})()
+	});
+	
+});
