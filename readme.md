@@ -13,7 +13,17 @@ Recommend versions of node.js  which support the destructuring assignment syntax
 > __What's coroutine?__ coroutine is computer program component,which allow you write sync-style code ,but the code is running in async way.
 
 # The Features & Solve What!
+
 `npm install zco`
+
+* Be Used With Callback Directly, Avoid callback hell.
+
+* ` this.ctx`: A global context for a single transaction
+
+* `defer`:A promise(not Promise in es6) that the operation defined by defer will be executed at end no mater if there is an error!
+
+* Support Consecutive Error Stack
+
 ### 1. Be Used With Callback Directly!
 
 __Solve What__: [callback hell](http://callbackhell.com/).
