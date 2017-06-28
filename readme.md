@@ -10,8 +10,6 @@ Generator based control flow, no other dependence.
 
 Recommend versions of node.js  which support the destructuring assignment syntax.
 
-> __What's coroutine?__ coroutine is computer program component,which allow you write sync-style code ,but the code is running in async way.
-
 # The Features & Solve What!
 
 `npm install zco`
@@ -370,7 +368,7 @@ co(function  * () {
 })()
 ```
 
-###9.  When Promise
+### 9.  When Promise
 
 Even if not recommend Promise ,sometimes we can't bypass.
 
