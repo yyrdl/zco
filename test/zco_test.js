@@ -432,9 +432,9 @@ describe("co.all", function () {
 	})
 	it("all:should be thrown out if no handler provided (zco future)", function (done) {
 		try {
-			co.all(co(function *() {
-				throw  new Error()
-			}))();
+			co.all(co(function  * () {
+					throw new Error()
+				}))();
 		} catch (e) {
 			if (e) {
 				done()
@@ -614,187 +614,294 @@ describe("timeLimit", function () {
 		})
 	});
 	it("co.timeLimit error should be thrown out when no handler", function (done) {
-		var error=null;
+		var error = null;
 		try {
 			co.timeLimit(100, co(function  * () {
 					throw new Error();
 				}))()
 		} catch (e) {
-			error=e;
+			error = e;
 		}
-	    if(error!=null){
+		if (error != null) {
 			done();
-		}else{
+		} else {
 			done(new Error());
 		}
 	})
 })
 
-describe("brief model",function () {
-	
-	it("return single value",function (done) {
-		var co_func=function () {
-			return co(function *() {
+describe("brief model", function () {
+
+	it("return single value", function (done) {
+		var co_func = function () {
+			return co(function  * () {
 				return 10;
 			})
 		}
-		co.brief(function *() {
-			let d=yield co_func();
-			if(d!=10){
+		co.brief(function  * () {
+			let d = yield co_func();
+			if (d != 10) {
 				done(new Error());
-			}else{
+			} else {
 				done();
 			}
 		})()
 	})
 
-	it("when error",function (done) {
-		var co_func=function () {
-			return co(function *() {
+	it("when error", function (done) {
+		var co_func = function () {
+			return co(function  * () {
 				throw new Error();
 			});
 		}
-		co.brief(function *() {
-			let d=yield co_func();
-			if(d==10){
+		co.brief(function  * () {
+			let d = yield co_func();
+			if (d == 10) {
 				done(new Error());
 			}
-		})((err)=>{
-			if(err==null){
+		})((err) => {
+			if (err == null) {
 				done(new Error());
-			}else{
+			} else {
 				done()
 			}
 		})
 	})
-	
+
 })
 
-describe("coverage test",function () {
-	var func1=function(){
-		return co(function *() {
+describe("coverage test", function () {
+	var func1 = function () {
+		return co(function  * () {
 			throw new Error()
 		})
 	};
-	var func2=function (cb) {
+	var func2 = function (cb) {
 
 		setTimeout(function () {
 			cb();
-		},40);
+		}, 40);
 		throw new Error();
 	}
 
-	it("co.all line274",function (done) {
-		co(function *(co_next) {
-          yield co.all(func1(),func2);
-		  yield setTimeout(co_next,60);
-		})(()=>{
-           done()
+	it("co.all line274", function (done) {
+		co(function  * (co_next) {
+			yield co.all(func1(), func2);
+			yield setTimeout(co_next, 60);
+		})(() => {
+			done()
 		})
 	})
 
-	it("co.all line294",function (done) {
-		var error=null;
-		try{
+	it("co.all line294", function (done) {
+		var error = null;
+		try {
 			co.all(func1())();
-		}catch (e){
-			error=e;
-		}finally {
-			if(error==null){
+		} catch (e) {
+			error = e;
+		}
+		finally {
+			if (error == null) {
 				done(new Error());
-			}else{
+			} else {
 				done()
 			}
 		}
 	})
 
-	it("co.all timeout suspend",function (done) {
-		var future=null;
-		co.timeLimit(10,co(function *() {
-            future= co.all(function (cb) {
-			   setTimeout(function () {
-				   cb();
-			   },1000);
-		   },2000)
-			yield future;
+	it("co.all timeout suspend", function (done) {
+		var future = null;
+		co.timeLimit(10, co(function  * () {
+				future = co.all(function (cb) {
+						setTimeout(function () {
+							cb();
+						}, 1000);
+					}, 2000)
+					yield future;
 
-		}))(()=>{
-			future.__suspend__();//try to suspend a already return future
+			}))(() => {
+			future.__suspend__(); //try to suspend a already return future
 			done();
 		})
 	})
 
 })
 
+describe("ctx", function () {
 
-describe("ctx",function () {
-	
-	it("simple",function (done) {
+	it("simple", function (done) {
 		function func1() {
-			return co(function *() {
-				if(this.ctx.user=="Jack"){
+			return co(function  * () {
+				if (this.ctx.user == "Jack") {
 					done();
-				}else{
+				} else {
 					done(new Error());
 				}
 			});
 		}
-		co(function *() {
-			this.ctx.user="Jack";
+		co(function  * () {
+			this.ctx.user = "Jack";
 			yield func1();
 		})()
 	});
-	
-	it("with .timeLimit",function (done) {
+
+	it("with .timeLimit", function (done) {
 		function func1() {
-			return co(function *() {
-				if(this.ctx.user=="Jack"){
+			return co(function  * () {
+				if (this.ctx.user == "Jack") {
 					done();
-				}else{
+				} else {
 					done(new Error());
 				}
 			});
 		}
-		co(function *() {
-			this.ctx.user="Jack";
-			yield co.timeLimit(1,func1());
+		co(function  * () {
+			this.ctx.user = "Jack";
+			yield co.timeLimit(1, func1());
 		})()
 	});
 
-	it("with .all",function (done) {
+	it("with .all", function (done) {
 		function func1() {
-			return co(function *() {
-				if(this.ctx.user=="Jack"){
+			return co(function  * () {
+				if (this.ctx.user == "Jack") {
 					done();
-				}else{
+				} else {
 					done(new Error());
 				}
 			});
 		}
-		co(function *() {
-			this.ctx.user="Jack";
-			yield co.all(func1(),1);
+		co(function  * () {
+			this.ctx.user = "Jack";
+			yield co.all(func1(), 1);
 		})()
 	});
 
-	it("when  callback api",function (done) {
+	it("when  callback api", function (done) {
 		function func1(callback) {
-			 setTimeout(function () {
-				 if("function" === typeof callback.ctx){
-					 if(callback.ctx().user=="Jack"){
-						 done();
-					 }else{
-						 done(new Error());
-					 }
-				 }else{
-					 done(new Error());
-				 }
-			 },10)
+			setTimeout(function () {
+				if ("function" === typeof callback.ctx) {
+					if (callback.ctx().user == "Jack") {
+						done();
+					} else {
+						done(new Error());
+					}
+				} else {
+					done(new Error());
+				}
+			}, 10)
 		}
-		co(function *(co_next) {
-			this.ctx.user="Jack";
+		co(function  * (co_next) {
+			this.ctx.user = "Jack";
 			yield func1(co_next);
 		})()
 	});
-	
+
+	it("handler ", function (done) {
+		function func1() {
+			return co(function  * () {
+				this.ctx.user = "Jack"
+			});
+		}
+		co(function  * () {
+			yield func1();
+		})(function () {
+			if (this.ctx.user == "Jack") {
+				done();
+			} else {
+				done(new Error());
+			}
+		})
+	})
+
+	it("timeLimit handler ", function (done) {
+		function func1() {
+			return co(function  * () {
+				this.ctx.user = "Jack"
+			});
+		}
+		co.timeLimit(1, func1())(function () {
+			if (this.ctx.user == "Jack") {
+				done();
+			} else {
+				done(new Error());
+			}
+		})
+	})
+
+	it("zco.all handler ", function (done) {
+		function func1() {
+			return co(function  * () {
+				this.ctx.user = "Jack"
+			});
+		}
+		co.all(func1())(function () {
+			if (this.ctx.user == "Jack") {
+				done();
+			} else {
+				done(new Error());
+			}
+		})
+	})
+
+	it("combination handler ", function (done) {
+		function func1() {
+			return co(function  * () {
+				this.ctx.user = "Jack"
+			});
+		}
+		co.all(co.timeLimit(1, func1()))(function () {
+			if (this.ctx.user == "Jack") {
+				done();
+			} else {
+				done(new Error());
+			}
+		})
+	})
+
+	it("combination handler ", function (done) {
+		function func1() {
+			return co(function  * () {
+				this.ctx.user = "Jack"
+			});
+		}
+		co.all(co.all(func1()))(function () {
+			if (this.ctx.user == "Jack") {
+				done();
+			} else {
+				done(new Error());
+			}
+		})
+	})
+
+	it("combination handler ", function (done) {
+		function func1() {
+			return co(function  * () {
+				this.ctx.user = "Jack"
+			});
+		}
+		co.timeLimit(1, co.all(func1()))(function () {
+			if (this.ctx.user == "Jack") {
+				done();
+			} else {
+				done(new Error());
+			}
+		})
+	})
+
+	it("combination handler ", function (done) {
+		function func1() {
+			return co(function  * () {
+				this.ctx.user = "Jack"
+			});
+		}
+		co.timeLimit(10, co.timeLimit(1, func1()))(function () {
+			if (this.ctx.user == "Jack") {
+				done();
+			} else {
+				done(new Error());
+			}
+		})
+	})
+
 });

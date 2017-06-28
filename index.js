@@ -453,6 +453,8 @@ var timeLimit = function (ms, future) {
 	has_return = false,
 	callback = null;
 
+	var _this={"ctx":{}};
+
 	if ("[object Number]" !== toString.call(ms) || ms < 0) {
 
 		throw new TypeError("Illegal timeout setting!")
@@ -484,7 +486,7 @@ var timeLimit = function (ms, future) {
 		}
 
 		if (callback) {
-			return callback(err, result);
+			return callback.apply(_this,[err, result]);
 		}
 
 		if (err) { //your code throws an error ,but no handler provided ,zco throws it out ,do not catch silently
@@ -504,6 +506,8 @@ var timeLimit = function (ms, future) {
 				cb_slave(timeout_error);
 
 			}, ms);
+
+        future.__ctx__(_this.ctx);
 
 		future(cb_slave);
 	}
@@ -525,7 +529,7 @@ var timeLimit = function (ms, future) {
 	}
 
 	t_future.__ctx__ = function (ctx) {
-		future.__ctx__(ctx);
+		_this.ctx = ctx;
 	}
 
 	return t_future;
