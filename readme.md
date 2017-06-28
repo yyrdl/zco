@@ -6,334 +6,283 @@
 
 [中文](https://github.com/yyrdl/zco/blob/master/readmes/readme_ch.md)
 
-Generator based control flow, no other dependence, support `defer` and timeout coroutine suspension.
+Generator based control flow, no other dependence.
 
-Recommend versions of node.js(or iojs)  which support the destructuring assignment syntax.
+Recommend versions of node.js  which support the destructuring assignment syntax.
 
-> __What's coroutine?__ coroutine is computer program component,it alow you write sync-style code ,but the code is running in async way.  
+> __What's coroutine?__ coroutine is computer program component,which allow you write sync-style code ,but the code is running in async way.
 
-# Table Of Contents
+# The Features & Solve What!
+`npm install zco`
+### 1. Be Used With Callback Directly!
 
-*  [Special-Features](#special-features)
-*  [Performance Battle](#performance-battle)
-*  [Useage](#useage)
-*  [Example](#example)
+__Solve What__: [callback hell](http://callbackhell.com/).
+
+Many operations in node.js is asynchronous, it's easy to fall into callback hell.Consider callback-style code like this:
+```js
+   const func = function (data0,callback){
+      func1(data0,function(data1){
+       func2(data1,function(data2){
+          func3(data2,function(data3){
+              setTimeout(function(){
+                 callback(data3);
+              },10);
+          })
+       })
+    })
+   }
+```
+what's a mess!  Lets's try zco!
+```js
+  const co = require("zco");
+  const func = function (data0){
+     return co(function*(co_next){
+        let [data1] = yield func1(data0,co_next);
+        let [data2] = yield func2(data1,co_next);
+        let [data3] = yield func3(data2,co_next);
+        yield setTimeout(co_next,10);
+        return data3;
+     })
+  }
+```
+Wow ,much clearer ！
+
+zco try to cooperate with callback directly.It's unnecessary to wrap callback-api.
 
 
-# Special Features
+### 2.  Future & Handler
+In this section ,we will introduce two concepts of zco , it's `future` and `handler`.
+We have created a function named `func` ,we will show how to use it.
 
-* __callstack trace__
-  
-By default,zco will add callstack to error automatically ,it's a nice way to debug the error thrown by async function.
-
-* __work with callback-api  gracefully__
-
-Manny modules in node.js provide callback-api,such as `fs` ,you can use them without any wrap.
-
-* __defer__  
-
- 
-Like in golang,`defer` define an operation that will be executed after the coroutine exit .you can set some clear-up work in defer, or define some operations that must be executed no matter if there is an error.
-
-
-* __coroutine suspension__ 
-
-  
- `co.all` and `co.timeLimit` support timeout settiing. there is no reason to execute the unfinished coroutines when timeout,and the coroutines  will be suspended.
-  
-
-# Useage
-
-	npm install zco
-
-# Example
-
-### Simple Useage
-
-```javascript
-
-const co = require("zco");
-const request = require("request")
-
-const fake_async_func = function (callback) { //support operation that is not an real-async action
-	callback(undefined, "hello world");
-}
-
-co(function  * (next) {
-
-	let[err, response, page] = yield request("http://www.google.com", next);	
-    //do something ....
-	
-	let[err2, msg] = yield fake_async_func(next);
-	
-	if(err2){
-	 //do something,or
-	 throw err2;
-	}
-	
-	console.log(err2); //null
-	
-	console.log(msg); //"hello world"
-	
-	return msg;
-	
-})((err,result)=>{
+Just invoke  directly:
+```js
+ func("a data")((err,data3)=>{
     if(err){
-	  console.log(err);//null
-	}else{
-	   console.log(result);//"hello world"
-	}
+       console.log(err);
+    }else{
+       console.log(data3);
+    }
+ })
+```
+The value returned by `co()` called `future` which is a function，the argument of `future` called `handler`. The code above is  equivalent to code below:
+
+```js
+var future = func("a data");
+var handler = (err,data3)=>{
+    if(err){
+       console.log(err);
+    }else{
+       console.log(data3);
+    }
+}
+future(handler);
+```
+The first argument of `handler` is error, the second is  the value returned by you.
+
+The code below show that we can yield `future` directly:
+
+```js
+   co(function*(){
+     let [err,data3] = yield func("a data");
+     if(err){
+        console.log(err);
+     }else{
+        console.log(data3);
+     }
+   })();
+```
+
+### 3. this.ctx
+`this.ctx` works like thread-local storage in threaded programming. Maybe you are a user of [node-continuation-local-storage](https://github.com/othiym23/node-continuation-local-storage),now, there is a much easier way.
+
+__Solve What__ : A global context for a single transaction --- `this.ctx`.
+
+An Example Scene:
+
+An user launched a request, and there is a `trace_id` which is the identifying of this transaction. In order to accomplish the request ,you will invoke some modules  in your project.  And  it's necessary to add `trace_id` to log for analyze. A traditional way  is treating `trace_id` as a  parameter ,and pass it everywhere. Now,we can do it in a  more graceful way !
+
+The code of the example scene:
+```js
+   //express router
+   router.post("/api",function(req,res,next){
+     co.brief(function*(){
+
+        // Initialize trace_id from req.headers, and set it to this.ctx
+
+        this.ctx.trace_id = req.headers.trace_id;
+
+        //simulate the operations in production.
+        let user_id = yield apis.findUserIdByUser(req.body.user);
+        let phone_list = yield apis.findPhoneListByUserId(user_id);
+        return phone_list;
+     })(function(err,list){
+        if(err){
+
+           //get trace_id from this.ctx ,and add it to log
+           log.error(err.stack,this.ctx.trace_id);
+
+           res.json({"success":false,"msg":"internal error!"});
+        }else{
+
+            //get trace_id from this.ctx ,and add it to log
+           log.info("request success",this.ctx.trace_id);
+
+           res.json({"success":true,"msg":"success","phone_list":list});
+        }
+     })
+   })
+```
+The code of `apis` used in the code above  which on behalf of the modules in your project:
+```js
+ exports.findUserIdByUser=function(user){
+    return co(function*(){
+       let user_id=null;
+       //...  on behalf of some database operations.
+       //get trace_id from this.ctx ,and add it to log
+       log.info("find user success",this.ctx.trace_id);
+       return user_id;
+    });
+ }
+
+ exports.findPhoneListByUserId=function(user_id){
+    return co(function*(){
+        let phone_list=null;
+        //... on behalf of some database operations.
+        //get trace_id from this.ctx ,and add it to log
+        log.info("find phone_list success",this.ctx.trace_id);
+        return phone_list;
+    });
+}
+```
+
+More about `this.ctx`:
+
+`this.ctx` is delivered  by zco  automatically ,when you yield a `future` ,it will deliver `this.ctx` by call
+`future.__ctx__(this.ctx)`. Then ,how about yield a  ordinary callback-api:
+
+```js
+ const callback_api=function(num,callback){
+    if("function" === typeof callback.ctx){
+      callback(num+callback.ctx().base);
+    }else{
+      callback(num);
+    }
+ }
+ co(function*(co_next){
+    this.ctx.base = 1;
+    let [result] =  yield callback_api(10,co_next);
+    console.log(result);//11
+ })()
+```
+The code above show that you can access `ctx` by call `co_next.ctx()`.
+
+### 4. co_next & defer
+
+You have saw `co_next` many times ,yeah , it's a common-callback, used to take the place of the origin callback, and accept the data that the callback-api passed to him.
+
+
+__defer Solve What__ ：A promise(not Promise in es6) that the operation defined by defer will be executed at end no mater if there is an error! Be used to do some cleaning  work ,like `db.close()`
+
+An Example Scene:
+Suppose we need to design a function which will visit the main page of google, and the max concurrency must smaller than 5. At first ,we should write a concurrent lock , and use concurrent lock in the function. Code maybe like this:
+```js
+    mutex.lock();//hold the lock
+    //... do the request here ,and some other operations
+    //... Suppose code like `JSON.parse("{")` throws an error here.
+    mutex.unLock();//release the lock
+```
+But  error maybe happen before `mutex.unLock`,there is no guarantee that the lock will be released.
+
+We can solve this by `defer`:
+```js
+  co(function*(co_next,defer){
+      defer(function*(){
+         mutex.unLock();
+      });
+
+      mutex.lock();
+      //... do the request here ,and some other operations
+      //... Suppose code like `JSON.parse("{")` throws an error here.
+      //But does not matter.
+  })();
+```
+
+### 5. Consecutive Error Stack
+As you know ,if an error occurred in an asynchronous function, it will lose call-stack which  make it difficult to debug .
+
+__Solve What__： Support Consecutive Error Stack
+
+code :
+```js
+const async_func=function(callback){
+    setTimeout(function(){
+       try{
+         JSON.parse("{");
+       }catch(e){
+         callback(e);
+       }
+    },10)
+}
+const middle_call_path=function(cb){
+  return async_func(cb)
+}
+middle_call_path((err)=>{
+  console.log(err.stack);
 });
-
 ```
-
-Function `co` expect a generator function as it's argument,and return a zco `future`.`future` is a function, The argument of zco `future` is also a function which be called as zco `handler`.
-
-### Callstack Trace 
-
-By default ,zco will add callstack to error,  you can forbid the feature globally by invoking `zco.__TrackCallStack(false)` .
-
-
->this feature cost more time,but the performance is still not bad .see performance battle below. 
-
-examples:
-
-```javascript
-const co = require("zco");
-
-const async_func = function (json) {
-	return co(function  * (co_next) {
-		yield setTimeout(co_next, 1000); //wait 1 second,simulate async operation
-		return JSON.parse(json);
-	})
-}
-
-const callFunc1 = function (json) {
-	return async_func(json);
-}
- 
-callFunc1("{")((err) => {
-	console.log(err.stack)
-})
-
-```
-
-stack：
-
+Code above output:
 ```
 SyntaxError: Unexpected end of JSON input
     at JSON.parse (<anonymous>)
-    at f:\social_insurance_test\co\co.js:6:19                       //where we call  `JSON.parse `
-    at callFunc1 (f:\social_insurance_test\co\co.js:11:11)          //where we call  `async_func `
-    at Object.<anonymous> (f:\social_insurance_test\co\co.js:14:1)  //where we call  `callFunc1 `
+    at Timeout._onTimeout (e:\GIT\test\zco.js:21:18)
+    at ontimeout (timers.js:488:11)
+    at tryOnTimeout (timers.js:323:5)
+    at Timer.listOnTimeout (timers.js:283:5)
 ```
+The stack of error didn't show where we call `async_func` and where we call `middle_call_path` ,we lose the callstack.
 
-try it by yourself :)
-
-### Defer
-
-It's a little same with the keyword `defer` in golang. 
-  
-A simple `defer` usage: define a concurrent lock ,make the max concurrency is  5 when request google main page. 
-In order to make sure the lock is be freed after `lock` ,we invoke the `unLock` method in `defer`.
-
-> If error occured in the operation defined by `defer` ,the error will be passed to the `handler`,if no `handler` provided ,it will be thrown out.
-
-```javascript
-const reuqest = require("request");
-
-//define concurrent lock factory. 
-const ConcurrentLockFactory = {
-	"new" : function (max_concurrent) {
-		return {
-			"current_running" : 0,
-			"unLock" : function () {
-				this.current_running--;
-				this._awake();
-			},
-			"lock" : function () {
-				this.current_running++;
-			},
-			"busy" : function () {
-				return this.current_running > max_concurrent - 1;
-			},
-			"waitFree" : function (callback) {
-				this._reply_pool.push(callback);
-				this._awake();
-			},
-			"_reply_pool" : [],
-			"_awake" : function () {
-				if (this.current_running < max_concurrent) {
-					let func = this._reply_pool.shift();
-					if ("function" == typeof func) {
-						func();
-					}
-				}
-			}
-		}
-	}
+Rewrite the code by zco:
+```js
+const async_func=function(){
+    return co(function*(co_next){
+       yield setTimeout(co_next,10);
+       JSON.parse("{");
+    });
 }
-
-//set max concurrency is 5
-
-const mutex = ConcurrentLockFactory.new(5);
-
-//the function below will make sure the max concurrency is 5,even if  invoke the method 10000 times at the same time
-
-const requestGoogleMainPage = function () {
-	return co(function  * (next, defer) {
-		defer(function  * (inner_next,error) {//the error is the error occurred outside ,such as error thrown below
-			mutex.unLock();//released the mutex
-		});
-		//concurrency control
-		if (mutex.busy()) {
-			yield mutex.waitFree(next);//wait free
-		}
-		mutex.lock();//lock the mutex
-		let[err, res, body] = yield request.get('http://google.com', next);
-		if (err) {
-			throw err;
-		}
-		return body;
-	});
+const middle_call_path=function(){
+    return async_func()
 }
-
+middle_call_path()((err)=>{
+    console.log(err.stack);
+});
 ```
-
-### ctx
-
-__Experimental__,not available from npm ,you can test by require this repo.
-
-```javascript
-
-const co = require("zco");
-
-const func1 = function () {
-	return co(function  * (co_next) {
-		yield setTimeout(co_next, 10);
-		console.log(this.ctx.user);//Jack
-		this.ctx.age = 10;
-	})
-}
-
-const func2 = function (callback) {
-	setTimeout(function () {
-		if ("function" === typeof callback.ctx) {
-			callback("hello :" + callback.ctx().user);
-		} else {
-			callback("hello");
-		}
-	});
-}
-
-co.brief(function  * (co_next) {
-	this.ctx.user = "Jack";// coroutine local ctx
-	yield func1();
-	let[msg] = yield func2(co_next);
-	console.log(msg);//hello :Jack
-})(function (err) {
-	if (err) {
-		console.log(err.stack);
-	}
-	console.log(this.ctx.user + " " + this.ctx.age);//Jack 10
-})
-
+Ouput:
 ```
-### Zco.timeLimit
-
-Set a time limit,suspend the coroutine and throw an error when timeout.if there are some operations defined by `defer`,the operations will be executed.
-But different with normal coroutine exit,if error occured in these operations,the error will be ignored.
-
-
-
-```javascript
-
-var variable = 1;
-co.timeLimit(1 * 10, co(function  * (next) {
-	variable = 11;
-	yield setTimeout(next, 2 * 10);//wait 20ms, 
-	variable = 111;
-}))((err) => {
-	console.log(err.message); //"timeout"
-})
-
-setTimeout(function () {
-	console.log(variable);
-	
-	//output "11",not "111",because the coroutine was suspended when timeout.
-	 
-
-}, 5 * 10);
-
-//more example
-
-var variable2 = 2;
-
-const co_func = function () {
-	return co(function  * (next) {
-		variable2 = 222;
-		yield setTimeout(next, 20);//be suspended here because of timeout
-		variable2 = 2222;
-	});
-}
-
-co.timeLimit(10, co(function  * (next) {
-	variable2 = 22;
-	yield co_func();
-}))((err) => {
-	console.log(err.message); //"timeout";
-})
-
-setTimeout(function () {
-	console.log(variable2); //"222"
-}, 40);
-
+SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at Object.<anonymous> (e:\GIT\test\zco.js:21:13)//where we call `JSON.parse`
+    at middle_call_path (e:\GIT\test\zco.js:25:12) //where we call `async_func`
+    at Object.<anonymous> (e:\GIT\test\zco.js:27:1)//where we call `middle_call_path`
 ```
+We get the full clear chain of function call ,try it by yourself :)
 
-### Zco.all
+### 6.zco.brief
 
-Execute operations concurrently
+zco suppose it's possible that all operations will go wrong, so the first return-value always be error,the second one is the exact result returned by you.Error in different place has different meaning,we can deal with them in different way.
+But sometimes ,we don't want to dealing with error everywhere ,then we use `co.brief`
 
-
-```javascript
-
-const co_func = function (a, b, c) {
-	return co(function  * (next) {
-	    yield setTimeout(next,10);//wait 10ms
-		return a+b+c;
-	})
-}
-
-const generic_callback = function (callback) { //the first arg must be callback
-	callback(100);
-}
-
-co(function  * (next) {
-	let timeout = 10 * 1000; //timeout setting
-	let[err, result] = yield co.all(co_func(1, 2, 3), co_func(4, 5, 6), generic_callback, timeout); //support set timeout， 
-
-	console.log(err); //null
-	console.log(result) //[6,15,[100]]
-})()
-
-```
-
-### Nest Useage 
-
-```javascript
-const co = require("zco");
-
+Example：
+```js
 const co_func=function(i){
   return co(function*(){
      return 10*i;
   })
 }
 
-
 co(function  * () {
 	let [err1, result1] = yield co_func(1);
 	if (err1) {
-		throw err1;
+		throw err1;//we can throw the error ,or do something else
 	}
 
 	let [err2, result2] = yield co_func(2);
@@ -350,8 +299,8 @@ co(function  * () {
 	}
 })
 
-//or
-
+//or in brief model
+// just care about the result ,deal with error at end
 co.brief(function*(){
 
    let result1 = yield co_func(1);
@@ -359,6 +308,7 @@ co.brief(function*(){
    let result2 = yield co_func(2);
 
    return result1+result2;
+
 })((err,result)=>{
     if (err) {//deal with error at end
    		console.log(err);
@@ -367,36 +317,50 @@ co.brief(function*(){
    	}
 });
 
-
 ```
 
-zco suppose it's  possible that all operations will go wrong, so the first return-value always be error,the second one is the exact result returned by the function, because  error in different place has different meaning,we can deal with 
-them in different way.
+### 7. zco.timeLimit
 
-But sometimes ,we don't want to dealing  with error everywhere ,then we use `co.brief`
+This api allows you setting a time limit of an operation,when timeout ,it will throw a timeout error.
 
+API: `co.timeLimit(ms,future)`
 
-### Catch Error
- 
+Example:
+```js
+co.timeLimit(1 * 10, co(function  * (co_next) {
+	yield setTimeout(co_next, 2 * 10);//wait 20ms,
+}))((err) => {
+	console.log(err.message); //"timeout"
+})
+```
+### 8.zco.all
+Execute operations concurrently
 
-```javascript
+API: `co.all(future...,[timeout setting])`;
 
-const sync_code_error = function (callback) {
-	throw new Error("manual error");
-	setTimeout(callback, 0);
+Example:
+```js
+const co_func = function (a, b, c) {
+	return co(function  * (co_next) {
+	    yield setTimeout(co_next,10);//wait 10ms
+		return a+b+c;
+	})
 }
 
-co(function  * (next) {
-	let a = yield sync_code_error(next);
-	return 10;
-})((err, v) => {
-	console.log(err.message); //"manual error"
-})
+const generic_callback = function (callback) { //the first arg must be callback
+	callback(100);
+}
 
+co(function  * () {
+	let timeout = 10 * 1000; //timeout setting
+	let[err, result] = yield co.all(co_func(1, 2, 3), co_func(4, 5, 6), generic_callback, timeout); //support set timeout，
 
+	console.log(err); //null
+	console.log(result) //[6,15,[100]]
+})()
 ```
 
-### When Promise
+###9.  When Promise
 
 Even if not recommend Promise ,sometimes we can't bypass.
 
@@ -409,7 +373,7 @@ const promise_api = function (a, b) {
 	});
 }
 
-co(function  * (next) {
+co(function  * () {
 
 	let[err, data] = yield co.wrapPromise(promise_api(1, 2));
 	/**
