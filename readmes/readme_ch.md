@@ -4,289 +4,310 @@
 
 # ZCO ![build status][test_status_url] [![Coverage Status][coverage_status_url]][coverage_page]
 
-基于Generator的协程模块,无外部依赖，支持defer和协程超时终止,可以让您愉快地书写异步代码，就像写同步代码一样，并且不依赖Promise.
+基于Generator的协程模块,无外部依赖，
 
 推荐支持解构语法node.js版本。
 
- 
-
-> __什么是协程?__  协程是计算机程序组件，他允许我们写同步风格的但却是异步执行的代码。 
 
 
 
 
-#  特别功能
-
-* __调用栈跟踪__
-
-  zco会自动为异常添加调用堆栈，方便debug异常出现的路径，解决了node里面异步方法出现异常难以debug的问题。
-
-* __深度支持回调__
-
-  node.js里面大部分原生接口都是基于回调实现的，比如文件模块'fs'，zco可以轻松地和这些模块协作，不需要任何包装。
-
-* __defer__  
-
-defer` 定义了一个在协程退出时必定会执行的操作，无论协程是否报错。可以使用defer定义一些退出时的清理工作，可类比C++的析构函数或是golang的defer关键字。
 
 
-* __协程超时挂起__
+#  功能 和 要解决的问题
 
- zco 提供的`co.all`和`co.timeLimit`两个方法支持设置超时时间。超时时zco将终止执行，避免无意义的资源消耗.详细见`co.timeLimit`的示例代码。简单理解就是一旦操作超时，
- 后续未执行的操作都不会得到执行。
- 
-# 安装
+`npm install zco`
 
-	npm install zco
 
-# 例子们
+* 可以直接和回调结合使用，避免深层回调嵌套
+* 为一次事务提供全局唯一的上下文 :`this.ctx`
+* `defer` 保证由`defer`定义的操作无论代码是否报错都会在最后得到执行
+* 提供连续的函数调用堆栈
 
-### 简单用法
+### 1. 同回调协作
 
-```javascript
+解决的问题: [深层回调嵌套](http://callbackhell.com/)
 
+node.js 里面的大部分操作是异步的，非常容易陷入回调地狱，基于回调的业务逻辑通常不清晰明了，下面是一个回调风格的代码：
+
+```js
+ const func = function (data0,callback){
+      func1(data0,function(data1){
+       func2(data1,function(data2){
+          func3(data2,function(data3){
+              setTimeout(function(){
+                 callback(data3);
+              },10);
+          })
+       })
+    })
+   }
+```
+感觉有点混乱，用zco重写一下:
+
+```js
 const co = require("zco");
-const request = require("request")
-
-const fake_async_func = function (callback) { //支持伪异步
-	callback(undefined, "hello world");
-}
-
-co(function  * (next) {
-
-     //请求baidu主页
-	let[err, response, page] = yield request("https://www.baidu.com", next);//next作为request模块的回调函数传入,
-	//err,response,page是request模块传给回调函数的参数
-     //do something ....
-	
-	let[err2, msg] = yield fake_async_func(next);
-	console.log(err2); //null
-	console.log(msg); //"hello world"
-})()
-
+  const func = function (data0){
+     return co(function*(co_next){
+        let [data1] = yield func1(data0,co_next);
+        let [data2] = yield func2(data1,co_next);
+        let [data3] = yield func3(data2,co_next);
+        yield setTimeout(co_next,10);
+        return data3;
+     })
+  }
 ```
 
+重写之后流程更清晰了。
 
+如果是从C系语言转过来的程序员，看到回调风格的代码会很不适应，确实 同步的平铺直叙的代码更容易懂。
 
-`co`方法接收一个`GeneratorFunction`,返回一个zco的`future`,`future`是一个`Function`实例，`future`接收一个函数作为他的参数，这个函数称之为zco的返回处理句柄,即`handler`。
+这个例子完整代码见 [here](https://github.com/yyrdl/zco_example/blob/master/callback_vs_zco/example1.js)
 
+### 2. Future 和 Handler
 
-### 调用栈跟踪
+`future`和`handler`是zco的两个主要概念。
 
-zco 默认自动为异常添加调用堆栈,可以调用`zco.__TrackCallStack(false)`全局禁用栈跟踪。
+在第一部分定义了`func`函数,下面直接调用一下：
+```js
+ func(1)((err,data3)=>{
+    if(err){
+       console.log(err);
+    }else{
+       console.log(data3);
+    }
+ })
+```
+`func`函数返回的是`co()`的执行结果，称`co`的返回值为`future`.`future`是一个特殊的函数，他的参数称为`handler`,`handler`也是一个函数，用来接收最后的结果，`handler`可以缺省。所以上面的代码等价为:
 
->启用栈跟踪会让zco的执行速度降低一半，时间耗在了获取堆栈上面，但基本和[co](https://github.com/tj/co)这类方案持平。性能测试结果见末尾。
-
-示例：
-
-```javascript
-const co = require("zco");
-
-const async_func = function (json) {
-	return co(function  * (co_next) {
-		yield setTimeout(co_next, 1000); //等待1秒，模拟异步操作
-		return JSON.parse(json);
-	})
+```js
+var future = func(1);
+var handler = (err,data3)=>{
+    if(err){
+       console.log(err);
+    }else{
+       console.log(data3);
+    }
 }
+future(handler);
+```
+`handler`的第一个参数是error,第二个参数是`func`函数中return 的`data3`. zco 认为所有的操作都有可能出现异常，所以第一个参数默认永远是error，如果handler缺省且出现异常的话，异常会被抛到全局。
 
-const callFunc1 = function (json) {
-	return async_func(json);
-}
- 
-callFunc1("{")((err) => {
-	console.log(err.stack)
-})
+`func`函数也可以像下面这样调用:
 
+```js
+  co(function*(){
+     let [err,data3] = yield func(1);
+     if(err){
+        console.log(err);
+     }else{
+        console.log(data3);
+     }
+   })();
 ```
 
-打出的stack 如下：
+ 这段代码表明可以直接 yield `future`。
 
+
+### 3. this.ctx
+
+`this.ctx` 是线程本地存储（thread-local storage）的一个近似实现. 传统的多线程程序，一个线程处理一个用户请求，那么这个线程的全局变量对于这个用户来讲就是私有的，不被其他用户共享。 node是单线程的，一个线程可以处理很多用户的请求，显然该线程的全局变量可以被多个用户共享，`this.ctx` 为用户提供一个私有的全局上下文。
+
+要解决的问题： 为一次事务提供全局唯一上下文。
+
+__一个场景__：
+
+一个用户发起了一个请求，并传递过来一个`trace_id`用来标识这次请求。为完成用户的这次请求，我们需要调用项目里面的多个模块，为了方便追踪和分析，希望每个模块的日志都带上这个`trace_id`。一种做法是将`trace_id`作为参数，传递给所有要调用的module。显然这种方法是不优雅的。
+
+下面借助`this.ctx` 完美的实现这个需求,[点我看完整示例代码](https://github.com/yyrdl/zco_example/tree/master/this.ctx)：
+
+```js
+   //express 风格的router
+   router.post("/api",function(req,res,next){
+     co.brief(function*(){
+
+        //从headers获得trace_id ，并将其赋到上下文上
+
+        this.ctx.trace_id = req.headers.trace_id;
+
+        //下面的代码代表实际生产中的业务操作
+        let user_id = yield apis.findUserIdByUser(req.body.user);
+        let phone_list = yield apis.findPhoneListByUserId(user_id);
+        return phone_list;
+     })(function(err,list){
+        if(err){
+
+           //从上下文获得trace_id，并添加到日志上
+            log.error(err.stack,{"trace_id":this.ctx.trace_id});
+
+            res.json({"success":false,"msg":"internal error!"});
+        }else{
+
+              //从上下文获得trace_id，并添加到日志上
+            log.info("request success",{"trace_id":this.ctx.trace_id});
+
+            res.json({"success":true,"phone_list":list});
+        }
+     })
+   })
+```
+上面代码用到的apis模块的定义如下：
+
+```js
+ exports.findUserIdByUser=function(user){
+    return co(function*(){
+       let user_id=null;
+       //...  省略号代表实际的操作，可能是数据库操作等
+       //从上下文获得trace_id，并添加到日志上
+       log.info("find user success",{"trace_id":this.ctx.trace_id});
+       return user_id;
+    });
+ }
+
+ exports.findPhoneListByUserId=function(user_id){
+    return co(function*(){
+        let phone_list=null;
+        //...  省略号代表实际的操作，可能是数据库操作等
+        //从上下文获得trace_id，并添加到日志上
+        log.info("find phone_list success",{"trace_id":this.ctx.trace_id});
+        return phone_list;
+    });
+}
+```
+上面代码表明`this.ctx`是共享的，在其他模块里也能访问到，实际上zco会依着函数调用链，将上下文传递下去.
+
+__`this.ctx`的更多信息__：
+
+zco 会自动传递上下文，当yield一个`future`时，会调用`future.__ctx__(this.ctx)` 传递上下文。那yield 普通的回调API呢？ 见下面的代码：
+
+```js
+ const callback_api=function(num,callback){
+    if("function" === typeof callback.ctx){
+      callback(num+callback.ctx().base);
+    }else{
+      callback(num);
+    }
+ }
+ co(function*(co_next){
+    this.ctx.base = 1;
+    let [result] =  yield callback_api(10,co_next);
+    console.log(result);//11
+ })()
+```
+
+这段代码yield 是一个普通的回调风格的API,在回调函数里面可以通过调用`co_next.ctx()`访问上下文.
+
+### 4. co_next 和 defer
+
+`co_next` 在前面已经出现了多次，他是一个通用的回调函数，用来代替一些模块原本的回调函数，比如可以代替文件模块`fs.readFile`的回调函数，那么读文件可以写成`let [error,file] = yield fs.readFile(path,co_next)`。 `co_next` 将接收原本传给回调函数的数据 。
+
+`defer` 提供了一个保证：由`defer`定义的操作在最后一定会被执行，并且不管代码有没有报错. 可以用来定义一些清理工作，比如`db.close()`。
+
+__一个场景__:
+
+假设需要访问github首页，并且需要控制访问并发数不会大于5。首先要写一个并发锁，然后在函数里使用这个并发锁控制并发数。代码可能会像下面这样：
+
+```js
+  mutex.lock();//持有锁
+  //... 做一些事情
+  //... 假设这儿可能会抛异常，比如`JSON.parse("{")`
+  mutex.unLock();//释放锁
+```
+在释放锁之前可能出现异常，这样就不能保证锁一定会被释放，就会出现死锁的风险，代码会卡住。
+
+用`defer`可以轻松解决这个问题:
+
+```js
+ co(function*(co_next,defer){
+      defer(function*(){
+         mutex.unLock();
+      });
+
+      mutex.lock();
+     //... 做一些事情
+     //... 假设这儿可能会抛异常，比如`JSON.parse("{")`
+     // 即使抛异常了，也不会影响锁的释放
+  })();
+```
+完整代码见[这儿](https://github.com/yyrdl/zco_example/tree/master/defer)
+
+### 5. 连续的调用堆栈
+
+我们都知道异步函数出现异常，抛出的error会丢失调用堆栈，这让查找问题变得困难。
+
+下面是这个问题的一个演示代码：
+
+```js
+const async_func=function(callback){
+    setTimeout(function(){
+       try{
+         JSON.parse("{");
+       }catch(e){
+         callback(e);
+       }
+    },10)
+}
+const middle_call_path=function(cb){
+  return async_func(cb)
+}
+middle_call_path((err)=>{
+  console.log(err.stack);
+});
+```
+打出的错误堆栈是：
 ```
 SyntaxError: Unexpected end of JSON input
     at JSON.parse (<anonymous>)
-    at f:\social_insurance_test\co\co.js:6:19                       //对应JSON.parse
-    at callFunc1 (f:\social_insurance_test\co\co.js:11:11)          //对应 async_func 调用的地方
-    at Object.<anonymous> (f:\social_insurance_test\co\co.js:14:1)  //对应callFunc1调用的地方
+    at Timeout._onTimeout (e:\GIT\test\zco.js:21:18)
+    at ontimeout (timers.js:488:11)
+    at tryOnTimeout (timers.js:323:5)
+    at Timer.listOnTimeout (timers.js:283:5)
 ```
 
-建议亲自尝试一下。
+堆栈信息并没有显示出我们是在哪里调用的`middle_call_path`,在哪里调用的`async_func`.
 
-### Defer
-
-一个实用的使用`defer`的例子:定义一个并发锁，控制访问百度首页的并发量是5，为保证锁被释放，在defer里调用`mutex.unLock` 方法.
-
->锁被占用以后必须在某处被释放，否则会造成死锁。然而无法确定代码是否会异常，进而会导致释放锁的操作没被执行。zco 通过defer提供了一个无论如何都会执行的保证。
-
- 
-```javascript
-const reuqest = require("request");
-
-//定义并发锁工厂
-const ConcurrentLockFactory = {
-	"new" : function (max_concurrent) {
-		return {
-			"current_running" : 0,
-			"unLock" : function () {
-				this.current_running--;
-				this._awake();
-			},
-			"lock" : function () {
-				this.current_running++;
-			},
-			"busy" : function () {
-				return this.current_running > max_concurrent - 1;
-			},
-			"waitFree" : function (callback) {
-				this._reply_pool.push(callback);
-				this._awake();
-			},
-			"_reply_pool" : [],
-			"_awake" : function () {
-				if (this.current_running < max_concurrent) {
-					let func = this._reply_pool.shift();
-					if ("function" == typeof func) {
-						func();
-					}
-				}
-			}
-		}
-	}
+用zco 重写上面的示例：
+```js
+const async_func=function(){
+    return co(function*(co_next){
+       yield setTimeout(co_next,10);
+       JSON.parse("{");
+    });
 }
-
-//生成一个并发锁，最大并发量是5
-
-const mutex = ConcurrentLockFactory.new(5);
-
- 
-// 下面这个方法将确保最大并发量是5，即使在同一时刻调用这个方法10000次。
-
-const requestBaidu = function () {
-
-	return co(function  * (next, defer) {
-	
-		defer(function  * (inner_next,error) {//`inner_next`的功能和`next`一致，error是`co`捕获到的错误，比如下面代码抛出的错误
-		
-			mutex.unLock();//释放锁
-			
-		});
-		
-		//并发控制,忙则等待
-		
-		if (mutex.busy()) {
-			yield mutex.waitFree(next);
-		}
-		
-		mutex.lock();//持有锁
-		
-		let[err, res, body] = yield request.get('https://www.baidu.com', next);
-		if (err) {
-			throw err;
-		}
-		return body;//在这个return 执行之后，或者异常抛出之后，defer里的操作将被执行
-	});
+const middle_call_path=function(){
+    return async_func()
 }
-
+middle_call_path()((err)=>{
+    console.log(err.stack);
+});
 ```
-### zco.timeLimit
-
-
-该方法为一个操作设置最大时间限制，超时未完成则挂起并抛出超时错误.如果被挂起的协程有使用`defer`，那么被挂起时会同时运行`defer`定义的操作。
-
-与正常退出执行`defer`定义的操作不同，如果`defer`定义的操作出现异常，那么异常将被忽略，但若是正常退出，则异常会被传递给最终的`handler`，
-
-如果没有提供`handler`，则异常会被抛出。
-
-
-```javascript
-
-var variable = 1;
-co.timeLimit(1 * 10, co(function  * (next) {
-	variable = 11;
-	yield setTimeout(next, 2 * 10);//wait 20ms,等待20毫秒模拟耗时的操作，由于大于10ms，超时，将在这里被挂起
-	variable = 111;
-}))((err) => {
-	console.log(err.message); //"timeout"
-})
-
-setTimeout(function () {
-	console.log(variable);
-	
-	//打印出11 而不是111，是因为超时后该协程被挂起了，后面的语句将不会执行
-
-}, 5 * 10);
-
-//more example
-
-var variable2 = 2;
-
-const co_func = function () {
-	return co(function  * (next) {
-		variable2 = 222;
-		yield setTimeout(next, 20);//be suspended here because of timeout
-		variable2 = 2222;
-	});
-}
-
-co.timeLimit(10, co(function  * (next) {
-	variable2 = 22;
-	yield co_func();
-}))((err) => {
-	console.log(err.message); //"timeout";
-})
-
-setTimeout(function () {
-	console.log(variable2); //"222"
-}, 40);
-
+打出的堆栈信息为：
 ```
-
-### zco.all
-
-
-
-并发执行一个操作集,前n个参数是要执行的操作，最后一个参数可以是数字，代表允许的最大执行时间，超时则会返回超时错误
-
-```javascript
-
-const co_func = function (a, b, c) {
-	return co(function  * (next) {
-	    yield setTimeout(next,10);//wait 10ms
-		return a+b+c;
-	})
-}
-
-const generic_callback = function (callback) { //第一个参数必须是回调函数
-	callback(100);
-}
-
-co(function  * (next) {
-	let timeout = 10 * 1000; //timeout setting
-	let[err, result] = yield co.all(co_func(1, 2, 3), co_func(4, 5, 6), generic_callback, timeout); //支持设置超时时间，超时时间作为最后一个参数
-
-	console.log(err); //null
-	console.log(result) //[6,15,[100]]
-})()
-
+SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at Object.<anonymous> (e:\GIT\test\zco.js:21:13)//调用 `JSON.parse`的地方
+    at middle_call_path (e:\GIT\test\zco.js:25:12) //调用 `async_func`的地方
+    at Object.<anonymous> (e:\GIT\test\zco.js:27:1)//调用`middle_call_path`的地方
 ```
+我们得到了完整的函数调用路径，方便了去查找造成异常的原因。
 
-### 嵌套使用
+[完整示例代码](https://github.com/yyrdl/zco_example/tree/master/consecutive_stack) （有回调版，zco版和co版）
 
+### 6. zco.brief
+zco 认为所有的操作都可能出错，所以 `handler`的第一个参数永远是error. 这样我们就能在异常刚开始出现的地方处理异常。 不同地方出现的异常具有不同的含义，处理方式也会有区别。 但有时候并不需要细粒度地去处理，这时候就可以使用`zco.brief`。
 
-
-```javascript
-const co = require("zco");
-
+细粒度处理的方式：
+```js
 const co_func=function(i){
   return co(function*(){
      return 10*i;
   })
 }
 
-
 co(function  * () {
 	let [err1, result1] = yield co_func(1);
 	if (err1) {
-		throw err1;
+		throw err1;//在这里只是将异常抛出，实际有可能是重试上面的操作
 	}
 
 	let [err2, result2] = yield co_func(2);
@@ -302,47 +323,83 @@ co(function  * () {
 		console.log(result);
 	}
 })
-
-//或者
-
+```
+粗粒度地处理：
+```js
 co.brief(function*(){
 
-   let result1 = yield co_func(1);
+   let result1 = yield co_func(1);//在这里只想要函数原本的返回结果
 
    let result2 = yield co_func(2);
 
    return result1+result2;
+
 })((err,result)=>{
-    if (err) {//在最后处理异常
+    if (err) {//如果有异常在最后统一处理
    		console.log(err);
    	} else {
    		console.log(result);
    	}
 });
-
 ```
 
-zco 假定所有的操作都可能出现异常，第一个返回值永远是error,第二个值才是正常的返回值。在我自己的工作项目中希望在异常出现的地方处理异常，因为不同地方出现的
-异常有不同的意义，有的可以重试，有的需要直接终止。
+### 7. zco.timeLimit
 
-在上面的第二个简明的例子中，异常在最后被处理，而不是在异常出现的地方。这是考虑到有时候并不需要细粒度的去处理异常，可以处理的粗犷一点。
+这个方法可以为一个操作设置时间限制，超时未完成则抛出超时异常.
 
+`zco.timeLimit(ms,future)`
 
+例子：
 
-### 当遇见Promise时
+```js
+co.timeLimit(1 * 10, co(function  * (co_next) {
+	yield setTimeout(co_next, 2 * 10);//等待 20毫秒,
+}))((err) => {
+	console.log(err.message); //"timeout"
+})
+```
 
+### 8. zco.all
 
-尽管不推荐使用Promise,zco也提供一个API来支持yield Promise.
+并发执行一系列操作
 
-```javascript
+API： `zco.all(future...,[timeout setting])`;
 
+例子：
+
+```js
+const co_func = function (a, b, c) {
+	return co(function  * (co_next) {
+	    yield setTimeout(co_next,10);//等待10毫秒
+		return a+b+c;
+	})
+}
+
+const generic_callback = function (callback) { //第一个参数必须是回调函数
+	callback(100);
+}
+
+co(function  * () {
+	let timeout = 10 * 1000; //超时时间
+	let[err, result] = yield co.all(co_func(1, 2, 3), co_func(4, 5, 6),generic_callback,timeout); //支持设置超时时间
+
+	console.log(err); //null
+	console.log(result) //[6,15,[100]]
+})()
+```
+
+### 9. 对于Promise
+
+并不推荐使用Promise，但有时候会遇到.
+
+```js
 const promise_api = function (a, b) {
 	return Promise.resolve().then(function () {
 		return a + b;
 	});
 }
 
-co(function  * (next) {
+co(function  * () {
 
 	let[err, data] = yield co.wrapPromise(promise_api(1, 2));
 	/**
@@ -352,7 +409,6 @@ co(function  * (next) {
 	console.log(err); //null
 	console.log(data) : //3;
 })()
-
 ```
 
 # Performance Battle
