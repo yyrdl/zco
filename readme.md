@@ -53,7 +53,8 @@ what's a mess!  Lets's try zco!
      })
   }
 ```
-Wow ,much clearer ！
+Wow ,much clearer ！full code [here](https://github.com/yyrdl/zco_example/blob/master/callback_vs_zco/example1.js)
+
 
 zco try to cooperate with callback directly.It's unnecessary to wrap callback-api.
 
@@ -109,7 +110,7 @@ An Example Scene:
 
 An user launched a request, and there is a `trace_id` which is the identifying of this transaction. In order to accomplish the request ,you will invoke some modules  in your project.  And  it's necessary to add `trace_id` to log for analyze. A traditional way  is treating `trace_id` as a  parameter ,and pass it everywhere. Now,we can do it in a  more graceful way !
 
-The code of the example scene:
+The code of the example scene,full code [here](https://github.com/yyrdl/zco_example/tree/master/this.ctx):
 ```js
    //express router
    router.post("/api",function(req,res,next){
@@ -214,6 +215,7 @@ We can solve this by `defer`:
       //But does not matter.
   })();
 ```
+Full code [here](https://github.com/yyrdl/zco_example/tree/master/defer)
 
 ### 5. Consecutive Error Stack
 As you know ,if an error occurred in an asynchronous function, it will lose call-stack which  make it difficult to debug .
@@ -273,6 +275,8 @@ SyntaxError: Unexpected end of JSON input
     at Object.<anonymous> (e:\GIT\test\zco.js:27:1)//where we call `middle_call_path`
 ```
 We get the full clear chain of function call ,try it by yourself :)
+
+full code [here](https://github.com/yyrdl/zco_example/tree/master/consecutive_stack)
 
 ### 6.zco.brief
 
