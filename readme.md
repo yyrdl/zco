@@ -187,11 +187,19 @@ __defer Solve What__ ：A promise(not Promise in es6) that the operation defined
 
 co(function * (co_next,defer){
 
+   let db = null;
+
    defer(function *(err,inner_co_next){
        if(err){
          console.log(err.message);//"Manual Error!"
        }
+
+       db.close();
+
+       //....or other operations you would like to do
    });
+
+   db = database.connect();
 
    throw new Error("Manual Error!");
 
