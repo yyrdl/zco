@@ -231,7 +231,7 @@ We can solve this by `defer`:
       mutex.lock();
       //... do the request here ,and some other operations
       //... Suppose code like `JSON.parse("{")` throws an error here.
-      //But does not matter.
+      //But does not matter, the lock will be released safely
   })();
 ```
 Full code [here](https://github.com/yyrdl/zco_example/tree/master/defer)
