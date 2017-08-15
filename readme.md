@@ -10,9 +10,17 @@ Generator based control flow, no other dependence.
 
 Recommend versions of node.js  which support the destructuring assignment syntax.
 
-# The Features & Solve What!
+# Useage
 
 `npm install zco`
+
+```js
+ const co = require("zco");
+ //....
+```
+
+# The Features & Solve What!
+
 
 * Be Used With Callback Directly, Avoid callback hell.
 
@@ -42,7 +50,7 @@ Many operations in node.js is asynchronous, it's easy to fall into callback hell
 ```
 what's a mess!  Lets's try zco!
 ```js
-  const co = require("zco");
+
   const func = function (data0){
      return co(function*(co_next){
         let [data1] = yield func1(data0,co_next);
@@ -52,14 +60,16 @@ what's a mess!  Lets's try zco!
         return data3;
      })
   }
+
 ```
 Wow ,much clearer ！full code [here](https://github.com/yyrdl/zco_example/blob/master/callback_vs_zco/example1.js)
 
 
-zco try to cooperate with callback directly.It's unnecessary to wrap callback-api.
+zco try to cooperate with callback directly.It's unnecessary to wrap callback-api to Promise.
 
 
 ### 2.  Future & Handler
+
 In this section ,we will introduce two concepts of zco , it's `future` and `handler`.
 We have created a function named `func` ,we will show how to use it.
 
@@ -86,7 +96,7 @@ var handler = (err,data3)=>{
 }
 future(handler);
 ```
-The first argument of `handler` is error, the second is  the value returned by you.
+The first argument of `handler` is error, the second is  the value returned by yourself.
 
 The code below show that we can yield `future` directly:
 
@@ -102,67 +112,47 @@ The code below show that we can yield `future` directly:
 ```
 
 ### 3. this.ctx
+
+`this.ctx` is a global context for a single transaction.
+
+
+```js
+
+const a_func = function () {
+
+  return co(function * () {
+
+     let xxx = this.ctx.xxx; // get `xxx` from this.ctx
+
+     return xxx;
+  });
+
+}
+
+co(function * () {
+
+   this.ctx.xxx = "hello world";// assign a key-value pair to `this.ctx`
+
+   let [err,xxx] = yield a_func();// zco will deliver `this.ctx` automatically
+
+   console.log(xxx);// "hello world"
+
+
+})()
+
+```
+
+
 `this.ctx` works like thread-local storage in threaded programming. Maybe you are a user of [node-continuation-local-storage](https://github.com/othiym23/node-continuation-local-storage),now, there is a much easier way.
 
-__Solve What__ : A global context for a single transaction --- `this.ctx`.
+
 
 An Example Scene:
 
-An user launched a request, and there is a `trace_id` which is the identifying of this transaction. In order to accomplish the request ,you will invoke some modules  in your project.  And  it's necessary to add `trace_id` to log for analyze. A traditional way  is treating `trace_id` as a  parameter ,and pass it everywhere. Now,we can do it in a  more graceful way !
+An user launched a request, and there is a `trace_id` which is the identifying of this transaction. In order to accomplish the request ,you will invoke many functions.  And  it's necessary to add `trace_id` to log for analyze. A traditional way  is treating `trace_id` as a  parameter ,and pass it everywhere. Now,we can do it in a  more graceful way !
 
-The code of the example scene,full code [here](https://github.com/yyrdl/zco_example/tree/master/this.ctx):
-```js
-   //express router
-   router.post("/api",function(req,res,next){
-     co.brief(function*(){
+Full code [here](https://github.com/yyrdl/zco_example/tree/master/this.ctx).
 
-        // Initialize trace_id from req.headers, and set it to this.ctx
-
-        this.ctx.trace_id = req.headers.trace_id;
-
-        //simulate the operations in production.
-        let user_id = yield apis.findUserIdByUser(req.body.user);
-        let phone_list = yield apis.findPhoneListByUserId(user_id);
-        return phone_list;
-     })(function(err,list){
-        if(err){
-
-           //get trace_id from this.ctx ,and add it to log
-           log.error(err.stack,this.ctx.trace_id);
-
-           res.json({"success":false,"msg":"internal error!"});
-        }else{
-
-            //get trace_id from this.ctx ,and add it to log
-           log.info("request success",this.ctx.trace_id);
-
-           res.json({"success":true,"msg":"success","phone_list":list});
-        }
-     })
-   })
-```
-The code of `apis` used in the code above  which on behalf of the modules in your project:
-```js
- exports.findUserIdByUser=function(user){
-    return co(function*(){
-       let user_id=null;
-       //...  on behalf of some database operations.
-       //get trace_id from this.ctx ,and add it to log
-       log.info("find user success",this.ctx.trace_id);
-       return user_id;
-    });
- }
-
- exports.findPhoneListByUserId=function(user_id){
-    return co(function*(){
-        let phone_list=null;
-        //... on behalf of some database operations.
-        //get trace_id from this.ctx ,and add it to log
-        log.info("find phone_list success",this.ctx.trace_id);
-        return phone_list;
-    });
-}
-```
 
 More about `this.ctx`:
 
@@ -185,6 +175,7 @@ More about `this.ctx`:
 ```
 The code above show that you can access `ctx` by call `co_next.ctx()`.
 
+
 ### 4. co_next & defer
 
 You have saw `co_next` many times ,yeah , it's a common-callback, used to take the place of the origin callback, and accept the data that the callback-api passed to him.
@@ -192,8 +183,26 @@ You have saw `co_next` many times ,yeah , it's a common-callback, used to take t
 
 __defer Solve What__ ：A promise(not Promise in es6) that the operation defined by defer will be executed at end no mater if there is an error! Be used to do some cleaning  work ,like `db.close()`
 
+```js
+
+co(function * (co_next,defer){
+
+   defer(function *(err,inner_co_next){
+       if(err){
+         console.log(err.message);//"Manual Error!"
+       }
+   });
+
+   throw new Error("Manual Error!");
+
+})()
+
+```
+
 An Example Scene:
+
 Suppose we need to design a function which will visit the main page of google, and the max concurrency must smaller than 5. At first ,we should write a concurrent lock , and use concurrent lock in the function. Code maybe like this:
+
 ```js
     mutex.lock();//hold the lock
     //... do the request here ,and some other operations
@@ -203,8 +212,10 @@ Suppose we need to design a function which will visit the main page of google, a
 But  error maybe happen before `mutex.unLock`,there is no guarantee that the lock will be released.
 
 We can solve this by `defer`:
+
 ```js
   co(function*(co_next,defer){
+
       defer(function*(){
          mutex.unLock();
       });
@@ -218,6 +229,7 @@ We can solve this by `defer`:
 Full code [here](https://github.com/yyrdl/zco_example/tree/master/defer)
 
 ### 5. Consecutive Error Stack
+
 As you know ,if an error occurred in an asynchronous function, it will lose call-stack which  make it difficult to debug .
 
 __Solve What__： Support Consecutive Error Stack
@@ -280,7 +292,7 @@ full code [here](https://github.com/yyrdl/zco_example/tree/master/consecutive_st
 
 ### 6.zco.brief
 
-zco suppose it's possible that all operations will go wrong, so the first return-value always be error,the second one is the exact result returned by you.Error in different place has different meaning,we can deal with them in different way.
+zco suppose it's possible that all operations will go wrong, so the first return-value always be error,the second one is the exact result returned by yourself.Error in different place has different meaning,we can deal with them in different way.
 But sometimes ,we don't want to dealing with error everywhere ,then we use `co.brief`
 
 Example：
@@ -313,6 +325,7 @@ co(function  * () {
 
 //or in brief model
 // just care about the result ,deal with error at end
+
 co.brief(function*(){
 
    let result1 = yield co_func(1);
