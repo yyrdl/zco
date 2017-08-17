@@ -2,22 +2,48 @@
  * Created by yyrdl on 2017/3/14.
  */
 var track = require("./track");
+
 var slice = Array.prototype.slice;
+
 var toString = Object.prototype.toString;
 
 var TRACK_STACK = true;
 
+/**
+ * Judge if the target value is a zco future
+ *
+ * @param {Mixed} future
+ * @return {Boolean}
+ * @api private
+ * */
 var isZcoFuture = function (future) {
 	return future && ("function" === typeof future.__suspend__) && ("function" === typeof future.__ctx__);
 }
-
+/**
+ * Judge if the object is an instance of Promise
+ * @param {Object} pro
+ * @return {Boolean}
+ * @api private
+ * */
 var isPromise = function (pro) {
 	return pro && ("function" === (typeof pro.then)) && ("function" === (typeof pro.catch ));
 }
-
+/**
+ * The two runtime model flag of `zco_core`
+ * */
 var WRAP_DEFER_MODEL = 1;
 var BRIEF_MODEl = 2;
 
+/**
+ * the core of zco
+ *
+ * @param {GeneratorFunction} gen
+ * @param {Number} model
+ * @return {Function} future
+ *
+ * @api private
+ *
+ * */
 var zco_core = function (gen, model) {
 
 	var iterator = null,
@@ -28,7 +54,9 @@ var zco_core = function (gen, model) {
 	current_child_future = null,
 	hasRunCallback = false,
 	internal = false;
-
+	/**
+	 * Be used to save the context
+	 * */
 	var _this = {
 		"ctx": {}
 	};
@@ -36,9 +64,14 @@ var zco_core = function (gen, model) {
 	var frame = null;
 
 	if (TRACK_STACK) {
+		/**
+		 * Get the current stack frame
+		 * */
 		frame = track.callStackFrame(4)
 	}
-
+	/**
+	 * Run the handler fo zco (The callback provided by user)
+	 * */
 	var zco_core_run_callback = function (error, value) {
 
 		if (callback != null) {
@@ -49,11 +82,15 @@ var zco_core = function (gen, model) {
 			throw error; //your code throws an error ,but no handler provided ,zco throws it out ,do not catch silently
 		}
 	}
-
+	/**
+	 *build defer func,and deliver error
+	 * */
 	var zco_core_make_defer_func = function (error) {
-		return zco_core(deferFunc, WRAP_DEFER_MODEL, error); //build defer func,and delivery error
+		return zco_core(deferFunc, WRAP_DEFER_MODEL, error); //
 	}
-
+	/**
+	 *End the current coroutine
+	 * */
 	var zco_core_return = function (e, v) {
 
 		if (hasRunCallback) {
@@ -62,11 +99,16 @@ var zco_core = function (gen, model) {
 
 		hasRunCallback = true;
 
+		/**
+		 * Append call-stack to  error
+		 * */
 		if (TRACK_STACK && e) {
 
 			track.appendStackFrame(e, frame);
 		}
-
+		/**
+		 * Run defer
+		 * */
 		if (deferFunc != null) {
 
 			var _func = zco_core_make_defer_func(e);
@@ -81,11 +123,15 @@ var zco_core = function (gen, model) {
 			});
 
 		}
-
+		/**
+		 * Run handler
+		 * */
 		return zco_core_run_callback(e, v);
 
 	}
-
+	/**
+	 * Resume the coroutine
+	 * */
 	var zco_core_run = function (arg) {
 
 		var v = null,
@@ -97,21 +143,47 @@ var zco_core = function (gen, model) {
 		} catch (e) {
 			error = e;
 		}
-
+		/**
+		 * if `error` is not null ,end the coroutine
+		 * */
 		if (error != null) {
 			return zco_core_return(error);
 		}
-
+		/**
+		 * if it is finished ,end the coroutine
+		 * */
 		if (v.done) {
 			return zco_core_return(null, v.value);
 		}
-
+		/**
+		 * if the value is a future of zco ,invoke the future and resume the coroutine automatically
+		 * */
 		if (isZcoFuture(v.value)) {
 			current_child_future = v.value;
 			internal = true;
 			v.value.__ctx__(_this.ctx);
 			return v.value(zco_core_next);
 		}
+
+		/**
+		 * As you can see, if the result returned by the  expression after `yield` is not a zco future,it
+		 * will be ignored .And why not assign to the variable declared before `yield`? Because it will cause
+		 * conflicts .Zco is designed to work with callback-style-function directly ,so that you do not need to
+		 * do any wrap with this kind of function. When `yield` a callback-style-function ,zco can't predict if
+		 * you will run `co_next` in the function(the callback).For the sake of safety ,zco ignore the result.
+		 *
+		 * And yielding a sync function (or just a value) is also meaningless, it just like code below:
+		 *
+		 *```js
+		 * var a = yield 1;
+		 *
+		 *```
+		 * Although it's Correct  in grammar .
+		 *
+		 * So ,in zco ,you can yield a zco future directly ,and you can also yield a callback-style-function,
+		 * and it is your duty to run `co_next` in the callback-style-function to resume the coroutine.
+		 *
+		 * */
 
 	}
 
@@ -137,10 +209,12 @@ var zco_core = function (gen, model) {
 	}
 	/**
 	 * define zco future
+	 * @param {Function} handler
+	 * @api public
 	 * */
-	var zco_core_future = function (cb) {
-		if ("function" == typeof cb) {
-			callback = cb;
+	var zco_core_future = function (handler) {
+		if ("function" == typeof handler) {
+			callback = handler;
 		}
 		zco_core_run();
 	}
@@ -178,18 +252,27 @@ var zco_core = function (gen, model) {
 		iterator.return ();
 
 	}
-
+	/**
+	 * A method used to deliver context
+	 * */
 	zco_core_future.__ctx__ = function (ctx) {
 		_this.ctx = ctx;
 	}
-
+	/**
+	 * The common callback 'co_next'
+	 * @param {Mixed} ....
+	 * @api public
+	 * */
 	var zco_core_next = function () {
+
 		if (suspended) {
 			return;
 		}
 
 		var arg = slice.call(arguments);
-
+		/**
+		 * Judge the runtime model
+		 * */
 		if (model === BRIEF_MODEl && true === internal) {
 			if (arg[0] !== null) {
 				return zco_core_return(arg[0]);
@@ -238,7 +321,13 @@ var zco_core = function (gen, model) {
 
 	return zco_core_future;
 }
-
+/**
+ * The method `zco.all`
+ * @param {Function} future...
+ * @param {Number} timeout (optional)
+ * @return {Function} future
+ * @api public
+ * */
 var all = function () {
 
 	var timeout_handle = null,
@@ -424,6 +513,17 @@ var all = function () {
 	return future;
 }
 
+/**
+ * The method 'zco.wrapPromise'
+ *
+ *  I can't yield Promise directly ,that's unsafe.Becauce some callback-style API also return a Promise at the
+ * same time,such as `pg.client.query`.
+ *
+ *
+ * @param {Promise} pro
+ * @return {Function} future
+ * @api public
+ * */
 var wrapPromise = function (pro) {
 	if (!isPromise(pro)) {
 		throw new TypeError("The arg of wrapPromise must be an instance of Promise!");
@@ -446,6 +546,13 @@ var wrapPromise = function (pro) {
 	return future;
 }
 
+/**
+ * The method 'zco.timeLimit'
+ * @param {Number} ms (time limit)
+ * @param {Function} future
+ * @return {Function} future
+ * @api public
+ * */
 var timeLimit = function (ms, future) {
 
 	var timeout_handle = null,
@@ -535,11 +642,21 @@ var timeLimit = function (ms, future) {
 	return t_future;
 
 }
-
+/**
+ * The main method "zco()";
+ * @param {GeneratorFunction} gen
+ * @return {Function} future
+ * @api public
+ * */
 var co = function (gen) {
 	return zco_core(gen);
 }
-
+/**
+ * The brief model fo 'zco'
+ * @param {GeneratorFunction} gen
+ * @return {Function} future
+ * @api public
+ * */
 co.brief = function (gen) {
 	return zco_core(gen, BRIEF_MODEl);
 }
@@ -555,11 +672,6 @@ co.__TrackCallStack = function (boo) {
 
 co.all = all;
 
-/**
- *  I can't yield Promise directly ,that's unsafe.Becauce some callback-style API also return a Promise at the
- * same time,such as `pg.client.query`.
- *
- * */
 co.wrapPromise = wrapPromise;
 
 co.timeLimit = timeLimit;
