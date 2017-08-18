@@ -26,7 +26,7 @@ var isZcoFuture = function (future) {
  * @api private
  * */
 var isPromise = function (pro) {
-	return pro && ("function" === (typeof pro.then)) && ("function" === (typeof pro.catch ));
+	return pro && ("function" === typeof pro.then) && ("function" === typeof pro.catch );
 }
 /**
  * The two runtime model flag of `zco_core`
@@ -45,15 +45,22 @@ var BRIEF_MODEl = 2;
  *
  * */
 var zco_core = function (gen, model) {
-
+	/**
+	 * references
+	 * */
 	var iterator = null,
-	callback = null,
-	hasReturn = false,
+	handler = null,
 	deferFunc = null,
-	suspended = false,
-	current_child_future = null,
-	hasRunCallback = false,
-	internal = false;
+	current_child_future = null;
+
+	/**
+	 * flags
+	 * */
+	var resumed = true, // if the coroutine has already been resumed
+	suspended = false, // if the coroutine has already been suspended
+	exited = false, // if the coroutine has already exited
+	is_run_future = false;
+
 	/**
 	 * Be used to save the context
 	 * */
@@ -70,12 +77,12 @@ var zco_core = function (gen, model) {
 		frame = track.callStackFrame(4)
 	}
 	/**
-	 * Run the handler fo zco (The callback provided by user)
+	 * Run the handler fo zco (The handler provided by user)
 	 * */
-	var zco_core_run_callback = function (error, value) {
+	var zco_core_run_handler = function (error, value) {
 
-		if (callback != null) {
-			return callback.apply(_this, [error, value]);
+		if (handler != null) {
+			return handler.apply(_this, [error, value]);
 		}
 
 		if (error) {
@@ -91,13 +98,13 @@ var zco_core = function (gen, model) {
 	/**
 	 *End the current coroutine
 	 * */
-	var zco_core_return = function (e, v) {
+	var zco_core_exit = function (e, v) {
 
-		if (hasRunCallback) {
+		if (exited) {
 			return;
 		}
 
-		hasRunCallback = true;
+		exited = true;
 
 		/**
 		 * Append call-stack to  error
@@ -106,19 +113,21 @@ var zco_core = function (gen, model) {
 
 			track.appendStackFrame(e, frame);
 		}
+
 		/**
 		 * Run defer
 		 * */
 		if (deferFunc != null) {
 
 			var _func = zco_core_make_defer_func(e);
+
 			_func.__ctx__(_this.ctx);
 
 			return _func(function (ee) {
-				if (ee != null && callback === null) {
+				if (ee != null && handler === null) {
 					throw ee; //error occurred in defer,throw out if no handler provided
 				} else {
-					zco_core_run_callback(e || ee, v)
+					zco_core_run_handler(e || ee, v)
 				}
 			});
 
@@ -126,7 +135,7 @@ var zco_core = function (gen, model) {
 		/**
 		 * Run handler
 		 * */
-		return zco_core_run_callback(e, v);
+		return zco_core_run_handler(e, v);
 
 	}
 	/**
@@ -137,32 +146,36 @@ var zco_core = function (gen, model) {
 		var v = null,
 		error = null;
 
+		resumed = true;
+
 		try {
 			v = iterator.next(arg);
-			hasReturn = true;
 		} catch (e) {
 			error = e;
 		}
+
+		resumed = false;
+
 		/**
 		 * if `error` is not null ,end the coroutine
 		 * */
 		if (error != null) {
-			return zco_core_return(error);
+			return zco_core_exit(error);
 		}
 		/**
 		 * if it is finished ,end the coroutine
 		 * */
 		if (v.done) {
-			return zco_core_return(null, v.value);
+			return zco_core_exit(null, v.value);
 		}
 		/**
 		 * if the value is a future of zco ,invoke the future and resume the coroutine automatically
 		 * */
 		if (isZcoFuture(v.value)) {
 			current_child_future = v.value;
-			internal = true;
-			v.value.__ctx__(_this.ctx);
-			return v.value(zco_core_next);
+			is_run_future = true;
+			current_child_future.__ctx__(_this.ctx);
+			return current_child_future(zco_core_resume);
 		}
 
 		/**
@@ -187,12 +200,11 @@ var zco_core = function (gen, model) {
 
 	}
 
-	var zco_core_nextSlave = function (arg) {
-		hasReturn = false;
-		return zco_core_run(arg);
-	}
 	/**
 	 * define defer
+	 * @param {GeneratorFunction} func
+	 * @return {Null}
+	 * @api public
 	 * */
 	var defer = function (func) {
 
@@ -212,9 +224,9 @@ var zco_core = function (gen, model) {
 	 * @param {Function} handler
 	 * @api public
 	 * */
-	var zco_core_future = function (handler) {
-		if ("function" == typeof handler) {
-			callback = handler;
+	var zco_core_future = function (han) {
+		if ("function" == typeof han) {
+			handler = han;
 		}
 		zco_core_run();
 	}
@@ -223,13 +235,14 @@ var zco_core = function (gen, model) {
 	 * define 'suspend' method
 	 * */
 	zco_core_future.__suspend__ = function () {
-		if (hasRunCallback || suspended) {
+
+		if (exited || suspended) {
 			return;
 		}
 
 		suspended = true;
 
-		hasRunCallback = true;
+		exited = true;
 
 		if (deferFunc != null) {
 
@@ -258,46 +271,57 @@ var zco_core = function (gen, model) {
 	zco_core_future.__ctx__ = function (ctx) {
 		_this.ctx = ctx;
 	}
+
 	/**
 	 * The common callback 'co_next'
+	 *
+	 * Resume the coroutine
+	 *
 	 * @param {Mixed} ....
 	 * @api public
 	 * */
-	var zco_core_next = function () {
+	var zco_core_resume = function () {
 
-		if (suspended) {
+		if (suspended || exited) {
+
 			return;
+
 		}
 
 		var arg = slice.call(arguments);
 		/**
 		 * Judge the runtime model
 		 * */
-		if (model === BRIEF_MODEl && true === internal) {
+		if (model === BRIEF_MODEl && true === is_run_future) {
 			if (arg[0] !== null) {
-				return zco_core_return(arg[0]);
+				return zco_core_exit(arg[0]);
 			}
 			arg = arg[1];
 		}
 
-		internal = false;
+		is_run_future = false;
 
-		if (!hasReturn) { //support fake async operation,avoid error: "Generator is already running"
+		/**
+		 * Already resumed ,but resume again,it means that the action is not async.
+		 * Convert it to an async action by setTimeout.
+		 * support fake async operation,avoid error: "Generator is already running"
+		 * */
+		if (resumed) {
 
 			setTimeout(function () {
 
-				zco_core_nextSlave(arg);
+				return zco_core_run(arg);
 
 			}, 0);
 
 		} else {
 
-			zco_core_nextSlave(arg);
+			return zco_core_run(arg);
 
 		}
 	}
 
-	zco_core_next.ctx = function () {
+	zco_core_resume.ctx = function () {
 		return _this.ctx;
 	}
 
@@ -305,11 +329,11 @@ var zco_core = function (gen, model) {
 
 		if (model === WRAP_DEFER_MODEL) {
 
-			iterator = gen.apply(_this, [zco_core_next, arguments[2]]);
+			iterator = gen.apply(_this, [zco_core_resume, arguments[2]]);
 
 		} else {
 
-			iterator = gen.apply(_this, [zco_core_next, defer]);
+			iterator = gen.apply(_this, [zco_core_resume, defer]);
 
 		}
 
@@ -331,8 +355,8 @@ var zco_core = function (gen, model) {
 var all = function () {
 
 	var timeout_handle = null,
-	cb = null,
-	hasReturn = false,
+	callback = null,
+	exited = false,
 	actions = [],
 	timeout = null,
 	args = slice.call(arguments);
@@ -378,13 +402,13 @@ var all = function () {
 		}
 	}
 
-	var _end = function (error, result, is_timeout) {
+	var _exit = function (error, result, is_timeout) {
 
-		if (hasReturn) {
+		if (exited) {
 			return;
 		}
 
-		hasReturn = true;
+		exited = true;
 
 		if (!is_timeout && timeout_handle !== null) {
 
@@ -396,8 +420,8 @@ var all = function () {
 			_suspend_zco_future();
 		}
 
-		if (cb !== null) {
-			return cb.apply(_this, [error, result]);
+		if (callback !== null) {
+			return callback.apply(_this, [error, result]);
 		}
 
 		if (error) { //your code throws an error ,but no handler provided ,zco throws it out ,do not catch silently
@@ -412,20 +436,20 @@ var all = function () {
 		result = [];
 
 		var check = function () {
-			if (hasReturn) {
+			if (exited) {
 				return;
 			}
 
 			has_done++;
 
 			if (has_done == actions.length) {
-				_end(null, result, false);
+				_exit(null, result, false);
 			}
 		}
 
 		if (actions.length == 0) {
 
-			return _end(null, [], false);
+			return _exit(null, [], false);
 
 		}
 
@@ -439,7 +463,7 @@ var all = function () {
 
 					_action(function (err, data) {
 						if (err) {
-							return _end(err, null, false);
+							return _exit(err, null, false);
 						}
 						result[index] = data;
 						check();
@@ -461,7 +485,7 @@ var all = function () {
 						_action(slave_cb);
 
 					} catch (e) {
-						_end(e, null, false);
+						_exit(e, null, false);
 					}
 				}
 
@@ -471,17 +495,17 @@ var all = function () {
 		if (timeout !== null) {
 
 			timeout_handle = setTimeout(function () {
-					_end(timeout_error, null, true);
+					_exit(timeout_error, null, true);
 				}, timeout)
 		}
 
 	}
 
-	var future = function (callback) {
+	var future = function (handler) {
 
-		if ("function" == typeof callback) {
+		if ("function" == typeof handler) {
 
-			cb = callback;
+			callback = handler;
 
 		}
 
@@ -490,12 +514,12 @@ var all = function () {
 
 	future.__suspend__ = function () {
 
-		if (hasReturn) {
+		if (exited) {
 
 			return;
 		}
 
-		hasReturn = true;
+		exited = true;
 
 		if (timeout_handle != null) {
 
@@ -557,10 +581,12 @@ var timeLimit = function (ms, future) {
 
 	var timeout_handle = null,
 	is_timeout = false,
-	has_return = false,
+	exited = false,
 	callback = null;
 
-	var _this={"ctx":{}};
+	var _this = {
+		"ctx": {}
+	};
 
 	if ("[object Number]" !== toString.call(ms) || ms < 0) {
 
@@ -577,12 +603,12 @@ var timeLimit = function (ms, future) {
 	 */
 	var timeout_error = track.makeTimeoutError("timeout");
 
-	var cb_slave = function (err, result) {
-		if (has_return) {
+	var handler = function (err, result) {
+		if (exited) {
 			return;
 		}
 
-		has_return = true;
+		exited = true;
 
 		if (!is_timeout && timeout_handle != null) {
 			clearTimeout(timeout_handle);
@@ -593,7 +619,7 @@ var timeLimit = function (ms, future) {
 		}
 
 		if (callback) {
-			return callback.apply(_this,[err, result]);
+			return callback.apply(_this, [err, result]);
 		}
 
 		if (err) { //your code throws an error ,but no handler provided ,zco throws it out ,do not catch silently
@@ -601,7 +627,7 @@ var timeLimit = function (ms, future) {
 		}
 	}
 
-	var t_future = function (cb) {
+	var _future = function (cb) {
 		if ("function" == typeof cb) {
 			callback = cb;
 		}
@@ -610,21 +636,21 @@ var timeLimit = function (ms, future) {
 
 				is_timeout = true;
 
-				cb_slave(timeout_error);
+				handler(timeout_error);
 
 			}, ms);
 
-        future.__ctx__(_this.ctx);
+		future.__ctx__(_this.ctx);
 
-		future(cb_slave);
+		future(handler);
 	}
 
-	t_future.__suspend__ = function () {
-		if (has_return) {
+	_future.__suspend__ = function () {
+		if (exited) {
 			return;
 		}
 
-		has_return = true;
+		exited = true;
 
 		if (!is_timeout && timeout_handle !== null) {
 
@@ -635,11 +661,11 @@ var timeLimit = function (ms, future) {
 		future.__suspend__();
 	}
 
-	t_future.__ctx__ = function (ctx) {
+	_future.__ctx__ = function (ctx) {
 		_this.ctx = ctx;
 	}
 
-	return t_future;
+	return _future;
 
 }
 /**
