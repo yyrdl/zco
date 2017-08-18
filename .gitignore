@@ -8,3 +8,4 @@ node_modules
 #bench dependency
 benchmark/node_modules
 benchmark/test.js
+benchmark/report.txt
