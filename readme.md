@@ -189,7 +189,7 @@ co(function * (co_next,defer){
 
    let db = null;
 
-   defer(function *(err,inner_co_next){
+   defer(function *(inner_co_next,err){
        if(err){
          console.log(err.message);//"Manual Error!"
        }
