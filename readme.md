@@ -52,11 +52,11 @@ what's a mess!  Lets's try zco!
 ```js
 
   const func = function (data0){
-     return co(function*(co_next){
-        let [data1] = yield func1(data0,co_next);
-        let [data2] = yield func2(data1,co_next);
-        let [data3] = yield func3(data2,co_next);
-        yield setTimeout(co_next,10);
+     return co(function*(resume){
+        let [data1] = yield func1(data0,resume);
+        let [data2] = yield func2(data1,resume);
+        let [data3] = yield func3(data2,resume);
+        yield setTimeout(resume,10);
         return data3;
      })
   }
@@ -167,29 +167,29 @@ More about `this.ctx`:
       callback(num);
     }
  }
- co(function*(co_next){
+ co(function*(resume){
     this.ctx.base = 1;
-    let [result] =  yield callback_api(10,co_next);
+    let [result] =  yield callback_api(10,resume);
     console.log(result);//11
  })()
 ```
-The code above show that you can access `ctx` by call `co_next.ctx()`.
+The code above show that you can access `ctx` by call `resume.ctx()`.
 
 
-### 4. co_next & defer
+### 4. resume & defer
 
-You have saw `co_next` many times ,yeah , it's a common-callback, used to take the place of the origin callback, and accept the data that the callback-api passed to him.
+You have saw `resume` many times ,yeah , it's a common-callback, used to take the place of the origin callback, and accept the data that the callback-api passed to him.
 
 
 __defer Solve What__ ：A promise(not Promise in es6) that the operation defined by defer will be executed at end no mater if there is an error! Be used to do some cleaning  work ,like `db.close()`
 
 ```js
 
-co(function * (co_next,defer){
+co(function * (resume,defer){
 
    let db = null;
 
-   defer(function *(err,inner_co_next){
+   defer(function *(inner_resume,err){
        if(err){
          console.log(err.message);//"Manual Error!"
        }
@@ -222,7 +222,7 @@ But  error maybe happen before `mutex.unLock`,there is no guarantee that the loc
 We can solve this by `defer`:
 
 ```js
-  co(function*(co_next,defer){
+  co(function*(resume,defer){
 
       defer(function*(){
          mutex.unLock();
@@ -274,8 +274,8 @@ The stack of error didn't show where we call `async_func` and where we call `mid
 Rewrite the code by zco:
 ```js
 const async_func=function(){
-    return co(function*(co_next){
-       yield setTimeout(co_next,10);
+    return co(function*(resume){
+       yield setTimeout(resume,10);
        JSON.parse("{");
     });
 }
@@ -360,8 +360,8 @@ API: `co.timeLimit(ms,future)`
 
 Example:
 ```js
-co.timeLimit(1 * 10, co(function  * (co_next) {
-	yield setTimeout(co_next, 2 * 10);//wait 20ms,
+co.timeLimit(1 * 10, co(function  * (resume) {
+	yield setTimeout(resume, 2 * 10);//wait 20ms,
 }))((err) => {
 	console.log(err.message); //"timeout"
 })
@@ -374,8 +374,8 @@ API: `co.all(future...,[timeout setting])`;
 Example:
 ```js
 const co_func = function (a, b, c) {
-	return co(function  * (co_next) {
-	    yield setTimeout(co_next,10);//wait 10ms
+	return co(function  * (resume) {
+	    yield setTimeout(resume,10);//wait 10ms
 		return a+b+c;
 	})
 }
