@@ -10,6 +10,7 @@ var userinfo={
 var articelList=["a1","a2"];
 
 exports.getUserinfo=function (cb) {
+
     var error=undefined;
     setTimeout(function(){
         cb(error,userinfo);
@@ -25,6 +26,7 @@ exports.updateAge=function (new_age,cb) {
 exports.articleList=function(username,cb){
     var error=undefined;
     setTimeout(function () {
+
       cb(error,articelList);
     },1);
 }
@@ -34,4 +36,4 @@ exports.getArticle=function(n,cb){
     setTimeout(function () {
         cb(error,"hello world!");
     },1);
-}
+};

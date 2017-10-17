@@ -9,7 +9,8 @@
 		"optimist": "^0.6.1",
 		"bluebird": "2.11.0",
 		"when": "3.7.8",
-		"co": "4.6.0"
+		"co": "4.6.0",
+		"cc_co":"*"
 	},
 	"devDependencies": {},
 	"scripts": {
