@@ -2,7 +2,7 @@
 [coverage_status_url]:https://coveralls.io/repos/github/yyrdl/zco/badge.svg?branch=master
 [coverage_page]:https://coveralls.io/github/yyrdl/zco?branch=master
 
-# ZCO ![build status][test_status_url] [![Coverage Status][coverage_status_url]][coverage_page]
+# ZCO ![build status][test_status_url] [![Coverage Status][coverage_status_url]][coverage_page][![996.icu](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu)
 
 [中文](https://github.com/yyrdl/zco/blob/master/readmes/readme_ch.md)
 
