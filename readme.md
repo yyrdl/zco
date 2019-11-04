@@ -6,7 +6,7 @@
 
 [中文](https://github.com/yyrdl/zco/blob/master/readmes/readme_ch.md)
 
-Generator based control flow, no other dependence.
+Generator based control flow with good performance, no other dependence.
 
 Recommend versions of node.js  which support the destructuring assignment syntax.
 
@@ -238,7 +238,7 @@ Full code [here](https://github.com/yyrdl/zco_example/tree/master/defer)
 
 ### 5. Consecutive Error Stack
 
-As you know ,if an error occurred in an asynchronous function, it will lose call-stack which  make it difficult to debug .
+If an error occurred in an asynchronous function, we will lose callstack which  make it difficult to debug .
 
 __Solve What__： Support Consecutive Error Stack
 
@@ -297,6 +297,8 @@ SyntaxError: Unexpected end of JSON input
 We get the full clear chain of function call ,try it by yourself :)
 
 full code [here](https://github.com/yyrdl/zco_example/tree/master/consecutive_stack)
+
+In order to get best performance, you can turn off this feature globally by call `zco.__TrackCallStack(false)`,nearly 2x faster.
 
 ### 6.zco.brief
 

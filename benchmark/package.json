@@ -4,13 +4,13 @@
 	"description": "Compare the performance and code of multiple async patterns",
 	"main": "run.js",
 	"dependencies": {
-		"async": "1.5.2",
-		"neo-async": "1.8.2",
+		"async": "*",
+		"neo-async": "*",
 		"optimist": "^0.6.1",
-		"bluebird": "2.11.0",
-		"when": "3.7.8",
-		"co": "4.6.0",
-		"cc_co":"*"
+		"bluebird": "*",
+		"when": "*",
+		"co": "*",
+		"cc_co": "*"
 	},
 	"devDependencies": {},
 	"scripts": {
